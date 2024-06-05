@@ -1,7 +1,7 @@
 #!/bin/sh
 ":" //# comment; exec /usr/bin/env node --harmony "$0" "$@"
 
-
+import {dirnameFromMeta, readJsonFile, searchFileInDirectoryTree} from "#src/core/FS/utils";
 import {program} from 'commander';
 import {createCommandHTTP} from "#commands/CommandHTTP";
 import {createCommandAuth} from "#commands/CommandAuth";
@@ -14,7 +14,12 @@ import {addExamples, addUsage} from "#commands/utils";
 
 program
   .name('tunli')
-  .description('HTTP tunnel client');
+  .description('HTTP tunnel client')
+  .option('-v, --version', 'version', () => {
+    const packageJson = readJsonFile(searchFileInDirectoryTree('package.json', dirnameFromMeta(import.meta)))
+    console.log(`tunli: ${packageJson.version}`)
+    process.exit()
+  })
 
 program.addCommand(createCommandConfig(program))
 program.addCommand(createCommandHTTP(program), {isDefault: true})

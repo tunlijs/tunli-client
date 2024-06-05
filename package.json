@@ -1,7 +1,7 @@
 {
   "name": "tunli",
   "description": "Node.js application for creating HTTP tunnels to make local software projects accessible over the internet.",
-  "version": "0.0.6-beta",
+  "version": "0.0.8",
   "main": "client.js",
   "bin": {
     "tunli": "client.js"

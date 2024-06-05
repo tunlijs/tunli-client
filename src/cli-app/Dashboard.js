@@ -13,7 +13,7 @@ import chalk from "chalk";
 export const initDashboard = (client, options, config) => {
 
   const screen = createScreen()
-  const packageJson = readJsonFile(searchFileInDirectoryTree('package.json'), dirnameFromMeta(import.meta))
+  const packageJson = readJsonFile(searchFileInDirectoryTree('package.json', dirnameFromMeta(import.meta)))
   const connectionStatus = ref(chalk.yellow('offline'))
   const requestCount = ref(0)
   const connectionDetails = ref('')
