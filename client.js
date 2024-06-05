@@ -1,6 +1,3 @@
-#!/bin/sh
-":" //# comment; exec /usr/bin/env node --harmony "$0" "$@"
-
 import {dirnameFromMeta, readJsonFile, searchFileInDirectoryTree} from "#src/core/FS/utils";
 import {program} from 'commander';
 import {createCommandHTTP} from "#commands/CommandHTTP";

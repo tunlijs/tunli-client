@@ -1,13 +1,13 @@
 {
   "name": "tunli",
   "description": "Node.js application for creating HTTP tunnels to make local software projects accessible over the internet.",
-  "version": "0.0.8",
-  "main": "client.js",
+  "version": "0.0.9",
+  "main": "bin/tunli",
   "bin": {
-    "tunli": "client.js"
+    "tunli": "bin/tunli"
   },
   "scripts": {
-    "dev": "nodemon app.js"
+    "dev": "nodemon client.js"
   },
   "keywords": [
     "HTTP tunnel",
