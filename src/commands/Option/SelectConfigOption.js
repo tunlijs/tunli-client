@@ -9,21 +9,41 @@ import {ConfigManager} from "#src/config/ConfigManager";
  */
 export const selectConfigOption = (command, configRef, strictMode = false) => {
 
-  command.option('--global', 'globale Konfigurationsdatei verwenden')
-    .option('--workdir', 'Konfigurationsdatei pro Arbeitsverzeichnis verwenden (default)')
+  command.option('--global', 'Use the global configuration file (default)')
+    .option('--workdir', 'Use the configuration file for the current working directory')
     .option('-p --alias <string>', 'setting alias name', 'default')
 
   if (configRef) {
     command.hook('preAction', (thisCommand, actionCommand) => {
 
-      const {alias, global} = thisCommand.opts()
+      let {alias, workdir, global} = thisCommand.opts()
 
-      if (global) {
-        configRef.value = ConfigManager.loadGlobalOnly(alias)
-      } else if (strictMode) {
-        configRef.value = ConfigManager.loadLocalOnly(alias, false)
+      if (strictMode) {
+        if (global) {
+          workdir = false
+        }
+        if (workdir) {
+          global = false
+        }
+        global ??= true
+        workdir ??= false
       } else {
-        configRef.value = ConfigManager.loadLocalWithGlobal(alias)
+        if (workdir) {
+          global ??= false
+        }
+        if (global) {
+          workdir ??= false
+        }
+        global ??= true
+        workdir ??= true
+      }
+
+      if (global && workdir) {
+        configRef.value = ConfigManager.loadCombined(alias)
+      } else if (global) {
+        configRef.value = ConfigManager.loadGlobalOnly(alias)
+      } else {
+        configRef.value = ConfigManager.loadLocalOnly(alias, !strictMode)
       }
     })
   }

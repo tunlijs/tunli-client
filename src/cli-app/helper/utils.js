@@ -3,7 +3,7 @@ import {Screen} from "#src/cli-app/Screen";
 import {isRef, ref} from "#src/core/Ref";
 
 /**
- * @param title
+ * @param {string} [title]
  * @returns {Screen}
  */
 export const createScreen = (title) => {

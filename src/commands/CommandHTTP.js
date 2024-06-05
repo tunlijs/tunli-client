@@ -1,5 +1,4 @@
 import {Command} from "commander";
-// import {renewProxyUrlRegistration, requestNewProxyUrl} from "#lib/Service/ProxyUrl";
 import {checkHost, checkPort} from "#src/utils/checkFunctions";
 import {isSharedArg, sharedArg} from "#commands/helper/SharedArg";
 import {addExample, validateArrayArguments, validateIpV4} from "#commands/utils";
@@ -7,19 +6,44 @@ import {bindArgs} from "#commands/helper/BindArgs";
 import {ref} from "#src/core/Ref";
 import {selectConfigOption} from "#commands/Option/SelectConfigOption";
 import {TunnelClient} from "#src/tunnel-client/TunnelClient";
+import {renewProxyUrlRegistration, requestNewProxyUrl} from "#lib/Flow/proxyUrl";
+import {getCurrentIp} from "#lib/Flow/getCurrentIp";
+import {arrayUnique} from "#src/utils/arrayFunctions";
 import {initDashboard} from "#src/cli-app/Dashboard";
 
+/**
+ * @callback httpCommandExec
+ * @param {number} port
+ * @param {string} host
+ * @param {tunnelClientOptions} options
+ * @returns {Promise<void>}
+ */
 
 /**
  * @param {Ref} configRef
- * @returns {(function(*, *): void)|*}
+ * @returns {httpCommandExec}
  */
 const exec = (configRef) => {
 
   return async (port, host, options) => {
 
-    /** @type {ConfTunnelRequest.jsigAbstract} */
+    /** @type {AppConfig} */
     const config = configRef.value
+
+    if (options.self) {
+      options.allowCidr ??= []
+      options.allowCidr.push(await getCurrentIp())
+      options.allowCidr = arrayUnique(options.allowCidr)
+    }
+
+    if (config.proxyURL) {
+      config.proxyURL = await renewProxyUrlRegistration(config.proxyURL, config.authToken)
+    }
+
+    if (!config.proxyURL) {
+      config.proxyURL = await requestNewProxyUrl(config.authToken)
+      options.save ??= true
+    }
 
     if (isSharedArg(port)) {
       host ??= port.value.host ?? port.value.url?.host
@@ -51,16 +75,18 @@ const exec = (configRef) => {
     /**
      * @type {tunnelClientOptions}
      */
-    const finalOptions = {
+    const clientOptions = {
       port: options.port ?? config.port,
       host: options.host ?? config.host,
       authToken: config.authToken,
       server: config.proxyURL,
-      path: undefined
+      path: undefined,
+      allowCidr: options.allowCidr ?? config.allowCidr,
+      denyCidr: options.denyCidr ?? config.denyCidr
     }
 
-    const client = new TunnelClient(finalOptions)
-    const dashboard = initDashboard(client, finalOptions)
+    const client = new TunnelClient(clientOptions)
+    const dashboard = initDashboard(client, clientOptions, config)
     await client.init(dashboard)
   }
 }
@@ -75,23 +101,6 @@ export const createCommandHTTP = (program) => {
   selectConfigOption(cmd, configRef)
   // validateAuthToken(cmd, configRef)
 
-  cmd.hook('preAction', async () => {
-
-    /** @type {LocalConfig|GlobalConfig} */
-    const config = configRef.value
-
-    if (config.proxyURL) {
-      // config.proxyURL = await renewProxyUrlRegistration(config.proxyURL, config.authToken)
-    }
-
-    if (!config.proxyURL) {
-      console.log('MISS')
-      process.exit()
-      config.proxyURL = await requestNewProxyUrl(config.authToken)
-      configRef.value = config.save()
-    }
-  })
-
   const sharedArgument = sharedArg({})
   cmd.argument('[PORT]', 'port welcher durch den proxy erreichbar sein soll (default: "80")', bindArgs(checkPort, sharedArgument, true))
   cmd.argument('[HOST]', 'host welcher durch den proxy erreichbar sein soll (default: "localhost"/"config.value")', bindArgs(checkHost, sharedArgument, true))
@@ -100,7 +109,7 @@ export const createCommandHTTP = (program) => {
   cmd.option('--port <string>', 'setting port', bindArgs(checkPort, sharedArgument, false))
   cmd.option('--allow-cidr <string>', 'allow-cidr', validateArrayArguments(validateIpV4))
   cmd.option('--deny-cidr <string>', 'deny-cidr', validateArrayArguments(validateIpV4))
-
+  cmd.option('--self', 'allow self only', false)
   cmd.option('--save [alias]', 'save current settings as alias/local')
   cmd.action(exec(configRef))
 

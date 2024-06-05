@@ -1,16 +1,4 @@
-export type TunnelClientOptions = {
-  host: string
-  port: number
-  path: string
-  proxyURL: string
-  authToken: string
-  denyCidr: string[]
-  allowCidr: string[]
-}
-
-export interface ConfigAbstract extends TunnelClientOptions {
-
-}
+import {Socket} from 'socket.io-client';
 
 export interface Headers {
 
@@ -35,6 +23,8 @@ export type SocketIoRawRequestObject = {
   method: RequestMethod
   headers: Headers
   path: string
+  requestId?: string
+  tunnelSocket?: Socket
 }
 
 export type cliListOption = {
@@ -45,15 +35,65 @@ export type cliListOption = {
   minWidth?: number | (number | boolean)[]
 }
 
+export type profileDump = {}
 export type proxyURL = string
+export type profileConfig = {
+  system: {}
+  profile: {}
+}
 
+interface ConfigAbstract {
+}
+
+export interface AppConfig {
+
+  port: number
+  host: string
+  authToken: string
+  proxyURL: proxyURL
+  path: undefined
+  origin: string
+  denyCidr?: ipCidr[]
+  allowCidr?: ipCidr[]
+
+  get fallbackConfig(): AppConfig
+
+  get profileData(): profileConfig
+
+  get configPath(): string
+
+  get profile(): profileAlias
+
+  copyCurrentProfileTo(profile: profileAlias): this
+
+  save(): this
+
+  useSystem(): AppConfig
+
+  use(profile: profileAlias): AppConfig
+
+  del(configKey: string): AppConfig
+
+  copyCurrentProfileTo(profile: profileAlias): this
+
+  dump(): profileDump
+}
+
+
+export type ipCidr = string
+export type profileAlias = string
 export type tunnelClientOptions = {
+  self: boolean
   port: number
   host: string
   authToken: string
   server: proxyURL
-  path: undefined
-  origin: string
+  path?: string
+  origin?: string
+  save?: profileAlias | true
+  denyCidr?: ipCidr[]
+  allowCidr?: ipCidr[]
+  allowSelf?: ipCidr[]
 }
 
 export type keypressEventDetails = {

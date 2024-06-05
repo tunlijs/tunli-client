@@ -19,9 +19,13 @@ export const renewProxyUrlRegistration = async (proxyUrl, token) => {
 
   const {data, error} = await securedHttpClient(token).get(`/renew/${subDomain}`);
 
+  if (data === false) {
+    return false
+  }
+
   if (!data) {
     console.error('Renew failed, request a new URL', error);
-    return null
+    process.exit(1)
   }
 
   return proxyUrl

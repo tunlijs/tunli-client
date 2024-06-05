@@ -4,6 +4,8 @@ import {forwardTunnelRequestToProxyTarget} from "#src/net/http/TunnelRequest";
 import {io} from "socket.io-client";
 import EventEmitter from "node:events";
 import {ref} from "#src/core/Ref";
+import {isValidRemoteAddress} from "#commands/helper/BindArgs";
+import {createRequestFromRaw} from "#src/utils/httpFunction";
 
 export class TunnelClient extends EventEmitter {
 
@@ -15,7 +17,6 @@ export class TunnelClient extends EventEmitter {
   #latency = ref(0)
 
   /**
-   *
    * @param {tunnelClientOptions} options
    */
   constructor(options) {
@@ -48,10 +49,18 @@ export class TunnelClient extends EventEmitter {
 
     socket.on('request', ( /** string */ requestId, /** SocketIoRawRequestObject */ request) => {
 
-      const isWebSocket = request.headers.upgrade === 'websocket';
-
+      const req = createRequestFromRaw(request, requestId, socket)
       request.requestId = requestId
       request.tunnelSocket = socket
+
+      if (!isValidRemoteAddress(req.remoteAddress, options)) {
+        this.emit('blocked', req.remoteAddress)
+        req.res.status(401).send(`Access denied for ip ${req.remoteAddress}`)
+        return;
+      }
+
+      const isWebSocket = request.headers.upgrade === 'websocket';
+
       request.port = options.port;
       request.hostname = options.host;
 

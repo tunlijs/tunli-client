@@ -17,7 +17,7 @@ const searchConfigInDirectoryTree = () => {
 export class ConfigManager {
 
   static loadLocalOnly(profile = 'default', searchInDirectoryTree = true) {
-    profile = normalizeAlias(profile)
+    profile = normalizeProfileAlias(profile)
 
     let configDirectory
     if (searchInDirectoryTree) {
@@ -32,46 +32,39 @@ export class ConfigManager {
     return new LocalConfig(data, configFilePath).use(profile)
   }
 
-  static loadLocalWithGlobal(profile = 'default') {
-    profile = normalizeAlias(profile)
+  static loadCombined(profile = 'default') {
+    profile = normalizeProfileAlias(profile)
 
     const globalConfig = ConfigManager.loadGlobalOnly()
-    const configDirectory = searchConfigInDirectoryTree() ?? LOCAL_CONFIG_DIR
+    const localConfigDirectory = searchConfigInDirectoryTree() ?? LOCAL_CONFIG_DIR
 
-    const configFilePath = resolve(configDirectory, CONFIG_FILENAME);
-    const data = existsSync(configFilePath) ? readJsonFile(configFilePath) : {}
+    const localConfigFilePath = resolve(localConfigDirectory, CONFIG_FILENAME);
+    const localExists = existsSync(localConfigFilePath)
 
-    return new LocalConfig(data, configFilePath, globalConfig).use(profile)
+    if (localExists) {
+      return new LocalConfig(readJsonFile(localConfigFilePath), localConfigFilePath, globalConfig).use(profile)
+    }
+
+    return globalConfig.use(profile)
   }
 
   static loadSystem() {
-    const configDirectory = GLOBAL_CONFIG_DIR
-
-    const configFilePath = resolve(configDirectory, CONFIG_FILENAME);
+    const configFilePath = resolve(GLOBAL_CONFIG_DIR, CONFIG_FILENAME);
     const data = existsSync(configFilePath) ? readJsonFile(configFilePath) : {}
-
     return new SystemConfig(data)
   }
 
   static loadGlobalOnly(profile = 'default') {
-    profile = normalizeAlias(profile)
-
-    const configDirectory = GLOBAL_CONFIG_DIR
-
-    const configFilePath = resolve(configDirectory, CONFIG_FILENAME);
+    profile = normalizeProfileAlias(profile)
+    const configFilePath = resolve(GLOBAL_CONFIG_DIR, CONFIG_FILENAME);
     const data = existsSync(configFilePath) ? readJsonFile(configFilePath) : {}
-
     return new GlobalConfig(data).use(profile)
   }
 }
 
-const normalizeAlias = (alias) => {
-  if (isAlias(alias)) {
-    alias = alias.toString().substring(1)
+const normalizeProfileAlias = (profileAlias) => {
+  if (typeof profileAlias === 'string' && profileAlias.startsWith('@')) {
+    profileAlias = profileAlias.toString().substring(1)
   }
-  return alias.toLowerCase()
-}
-
-const isAlias = (alias) => {
-  return typeof alias === 'string' && alias.startsWith('@')
+  return profileAlias.toLowerCase()
 }

@@ -8,14 +8,21 @@ import chalk from "chalk";
  *
  * @param {TunnelClient} client
  * @param {tunnelClientOptions} options
+ * @param {AppConfig} config
  */
-export const initDashboard = (client, options) => {
+export const initDashboard = (client, options, config) => {
 
   const screen = createScreen()
   const packageJson = readJsonFile(searchFileInDirectoryTree('package.json'), dirnameFromMeta(import.meta))
   const connectionStatus = ref(chalk.yellow('offline'))
   const requestCount = ref(0)
   const connectionDetails = ref('')
+
+  const allowedCidr = options.allowCidr.join(', ')
+  const deniedCidr = options.denyCidr.join(', ')
+
+  const blockedCount = ref(0)
+  const lastBlockedIp = ref('')
 
   screen.row(packageJson.name)
   screen.row('(Ctrl+C to quit)', {
@@ -25,7 +32,7 @@ export const initDashboard = (client, options) => {
 
   screen.row("")
 
-  const infoList = screen.list({minWidth: 0})
+  const infoList = screen.list({minWidth: 30})
   screen.row('HTTP Requests')
   screen.line()
 
@@ -36,6 +43,10 @@ export const initDashboard = (client, options) => {
     screen.render()
   })
 
+  client.on('blocked', ip => {
+    blockedCount.value++
+    lastBlockedIp.value = ` (${ip})`
+  })
   client.on('tunnel-connection-closed', () => {
     connectionStatus.value = chalk.bold(chalk.red('offline'))
     screen.render()
@@ -73,6 +84,15 @@ export const initDashboard = (client, options) => {
 
   infoList.row('Tunnel', concat(connectionStatus, connectionDetails))
   infoList.row('Version', packageJson.version)
+  infoList.row('Profile', config.profile)
+  infoList.row('Config', config.configPath)
+
+  if (allowedCidr || deniedCidr) infoList.row('')
+  if (allowedCidr) infoList.row('Allowed', allowedCidr)
+  if (deniedCidr) infoList.row('Denied', deniedCidr)
+  if (allowedCidr || deniedCidr) infoList.row('Blocked', concat(blockedCount, lastBlockedIp))
+
+  infoList.row('')
   infoList.row('Latency', concat(client.latency, 'ms'))
   infoList.row('Forwarding', `${trimEnd(options.server, '/')} -> ${trimEnd(target.toString(), '/')}`)
   infoList.row('Connections', requestCount)

@@ -40,6 +40,7 @@ export const VISIBILITY_PUBLIC = 1
 
 /**
  * Abstract class representing the basic configuration functionality.
+ * @implements {AppConfig}
  */
 export class ConfigAbstract {
   /**
@@ -124,7 +125,7 @@ export class ConfigAbstract {
 
   /**
    * Get the profile data.
-   * @return {{system: {}, profile: {}}}
+   * @return {profileConfig}
    */
   get profileData() {
     return this.#profileData
@@ -136,6 +137,10 @@ export class ConfigAbstract {
    */
   get configPath() {
     return this.#path
+  }
+
+  get profile() {
+    return this.#activeProfile
   }
 
   /**
@@ -240,7 +245,7 @@ export class ConfigAbstract {
    */
   save() {
     ensureDirectoryExists(dirname(this.#path))
-
+    console.log(this.#path)
     const isGlobal = this.constructor.name === 'GlobalConfig'
     const isSystem = this.constructor.name === 'SystemConfig'
 

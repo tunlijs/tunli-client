@@ -14,8 +14,8 @@ export const bindArgs = (fn, ...args) => {
  * Validates a remote address against allowed and denied CIDR ranges.
  * @param {string} remoteAddress - The remote address to check.
  * @param {Object} options - The options containing allowCidr and denyCidr arrays.
- * @param {string[]} options.allowCidr - Array of CIDR ranges that are allowed.
- * @param {string[]} options.denyCidr - Array of CIDR ranges that are denied.
+ * @param {ipCidr[]} options.allowCidr - Array of CIDR ranges that are allowed.
+ * @param {ipCidr[]} options.denyCidr - Array of CIDR ranges that are denied.
  * @returns {boolean} - True if the address is valid, otherwise false.
  */
 export const isValidRemoteAddress = (() => {

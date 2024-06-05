@@ -1,6 +1,7 @@
 import {checkHost, checkIpV4Cidr, checkPort, checkUrl} from "#src/utils/checkFunctions";
 import {ConfigAbstract, VISIBILITY_PUBLIC} from "#src/config/ConfigAbstract";
 import {property} from "#src/config/PropertyConfig";
+import {ConfigManager} from "#src/config/ConfigManager";
 
 /**
  * Abstract class for managing global and local shard configurations.
@@ -24,7 +25,9 @@ export class GlobalLocalShardConfigAbstract extends ConfigAbstract {
       writeable: true,
       type: String,
       validate(val) {
-        console.log(val)
+        if (!val) {
+          return
+        }
         return checkUrl(val)
       }
     }),
@@ -65,6 +68,7 @@ export class GlobalLocalShardConfigAbstract extends ConfigAbstract {
    * @param {ConfigAbstract} fallbackConfig - The fallback configuration to be used when specific data is not available.
    */
   constructor(additionalConfig = {}, prefillData = {}, path, fallbackConfig) {
+    fallbackConfig ??= ConfigManager.loadSystem()
     super(prefillData, path, fallbackConfig)
     this.prepare({...this.#config, ...additionalConfig})
     this.use('default')

@@ -89,7 +89,7 @@ const setupErrorHandlers = (source, target) => {
 
 
 /**
- * @param req
+ * @param {SocketIoRawRequestObject} req
  * @param {EventEmitter} eventEmitter
  */
 export const forwardTunnelRequestToProxyTarget = (req, eventEmitter) => {
