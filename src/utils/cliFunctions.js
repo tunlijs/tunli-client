@@ -1,4 +1,4 @@
-import {stdout} from 'node:process';
+import {argv, stdout} from 'node:process';
 import EventEmitter from "node:events";
 import {spawn} from "child_process";
 
@@ -18,9 +18,10 @@ export const clearTerminal = () => {
 /**
  * Runs a child process and proxies its output.
  * @param {string} pathToExecutable - Relative or absolute path to the executable script
+ * @param {array} [proxyArguments=process.argv.slice(2)] - Arguments to pass to the child process (default: process arguments)
  * @returns {Promise<number|null>} - Exit code of the child process
  */
-export const proxyChildProcess = (pathToExecutable) => {
+export const proxyChildProcess = (pathToExecutable, proxyArguments = argv.slice(2)) => {
 
   const eventEmitter = new EventEmitter()
   const createSpawnProcessPromise = () => {
@@ -45,7 +46,7 @@ export const proxyChildProcess = (pathToExecutable) => {
       }
     }
 
-    const child = spawn('node', [pathToExecutable], {
+    const child = spawn('node', [pathToExecutable, ...proxyArguments], {
       stdio: ['inherit', 'inherit', 'inherit', 'ipc'] // Proxy standard output and error to the main process, enable IPC channel
     })
       .on('close', onClose)
