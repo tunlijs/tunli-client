@@ -159,3 +159,15 @@ export const checkPort = (valueOrSharedArg, isArgument = false, value) => {
 
   return value
 }
+
+export const checkProtocol = (value) => {
+  return checkInArray(value, ['http', 'https'])
+}
+
+export const checkInArray = (val, arr) => {
+  if (!arr.includes(val)) {
+    throw new InvalidArgumentError(`Value must be one of (${arr.join(', ')})`)
+  }
+
+  return val
+}

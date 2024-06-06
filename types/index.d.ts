@@ -48,6 +48,7 @@ interface ConfigAbstract {
 
 export interface AppConfig {
 
+  protocol: protocol
   port: number
   host: string
   authToken: string

@@ -10,7 +10,7 @@ import {ConfigManager} from "#src/config/ConfigManager";
 export const selectConfigOption = (command, configRef, strictMode = false) => {
 
   command.option('--global', 'Use the global configuration file (default)')
-    .option('--workdir', 'Use the configuration file for the current working directory')
+    .option('--local, --workdir', 'Use the configuration file for the current working directory')
     .option('-p --alias <string>', 'setting alias name', 'default')
 
   if (configRef) {

@@ -61,6 +61,7 @@ const exec = (configRef, cmd, program) => {
 
     options.port ??= port
     options.host ??= host
+    options.protocol ??= protocol ?? 'http'
 
     const save = options.save
     delete options.save
@@ -90,7 +91,7 @@ const exec = (configRef, cmd, program) => {
       path: undefined,
       allowCidr: options.allowCidr ?? config.allowCidr,
       denyCidr: options.denyCidr ?? config.denyCidr,
-      protocol: protocol ?? 'http'
+      protocol: options.protocol
     }
 
     const client = new TunnelClient(clientOptions)

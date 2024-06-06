@@ -1,4 +1,4 @@
-import {checkHost, checkIpV4Cidr, checkPort, checkUrl} from "#src/utils/checkFunctions";
+import {checkHost, checkInArray, checkIpV4Cidr, checkPort, checkUrl} from "#src/utils/checkFunctions";
 import {ConfigAbstract, VISIBILITY_PUBLIC} from "#src/config/ConfigAbstract";
 import {property} from "#src/config/PropertyConfig";
 import {ConfigManager} from "#src/config/ConfigManager";
@@ -56,6 +56,15 @@ export class GlobalLocalShardConfigAbstract extends ConfigAbstract {
       defaultValue: '127.0.0.1',
       validate(val) {
         return checkHost(val)
+      }
+    }),
+    protocol: property({
+      visibility: VISIBILITY_PUBLIC,
+      writeable: true,
+      type: String,
+      defaultValue: 'http',
+      validate(val) {
+        return checkInArray(val, ['http', 'https'])
       }
     }),
   }

@@ -16,7 +16,7 @@ export class TunnelClient extends EventEmitter {
   #latency = ref(0)
 
   /**
-   * @param {tunnelClientOptions} options
+   * @param {...tunnelClientOptions} options
    */
   constructor(options) {
     super()

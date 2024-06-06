@@ -8,6 +8,7 @@ import {createCommandRefresh} from "#commands/CommandRefresh";
 import {argumentAliasResolver} from "#commands/helper/AliasResolver";
 import {createCommandInvite} from "#commands/CommandInvite";
 import {addExamples, addUsage} from "#commands/utils";
+import {profileListOption} from "#commands/Option/ProfileListOption";
 
 program
   .name('tunli')
@@ -17,6 +18,7 @@ program
     console.log(`tunli: ${packageJson.version}`)
     process.exit()
   })
+  .addOption(profileListOption())
 
 program.addCommand(createCommandConfig(program))
 program.addCommand(createCommandHTTP(program), {isDefault: true})

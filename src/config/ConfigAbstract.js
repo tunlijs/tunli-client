@@ -1,4 +1,4 @@
-import {writeFileSync} from "fs"
+import {existsSync, writeFileSync} from "fs"
 import {dirname} from 'path'
 import {ensureDirectoryExists} from "#src/core/FS/utils";
 import {PropertyConfig} from "#src/config/PropertyConfig";
@@ -141,6 +141,17 @@ export class ConfigAbstract {
 
   get profile() {
     return this.#activeProfile
+  }
+
+  /**
+   * @return {string[]}
+   */
+  get profiles() {
+    return Object.keys(this.#profileData.profile)
+  }
+
+  exists() {
+    return existsSync(this.#path)
   }
 
   /**

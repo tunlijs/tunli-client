@@ -5,6 +5,7 @@ import {portCommand} from "#commands/SubCommand/PortCommand";
 import {hostCommand} from "#commands/SubCommand/HostCommand";
 import {selectConfigOption} from "#commands/Option/SelectConfigOption";
 import {addExample, extendUsage} from "#commands/utils";
+import {protocolCommand} from "#commands/SubCommand/ProtocolCommand";
 
 /**
  *
@@ -41,6 +42,7 @@ export const createCommandConfig = (program) => {
   cmd.addCommand(allowDenyCidrCommand('denyCidr', cmd, configRef))
   cmd.addCommand(portCommand(configRef))
   cmd.addCommand(hostCommand(configRef))
+  cmd.addCommand(protocolCommand(configRef))
 
   selectConfigOption(cmd, configRef, true)
     .action(exec(configRef, program));
