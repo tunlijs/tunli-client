@@ -110,6 +110,7 @@ export const forwardTunnelRequestToProxyTarget = (req, eventEmitter) => {
     if (isWebSocket && localRes.upgrade) {
       return;
     }
+
     const tunnelResponse = new TunnelResponse({
       responseId: req.requestId,
       socket: req.tunnelSocket,
@@ -133,9 +134,13 @@ export const forwardTunnelRequestToProxyTarget = (req, eventEmitter) => {
     if (error.code === 'ECONNREFUSED') {
       statusCode = 502
       statusMessage = 'Bad gateway'
+    } else if (error.code === 'ECONNRESET') {
+      statusCode = 500
+      statusMessage = 'Connection reset'
     } else {
       console.error('IMPLEMENT ME')
       console.error(error)
+      console.error(error.code)
     }
 
     eventEmitter.emit('response', {statusCode, statusMessage}, req)
