@@ -118,6 +118,10 @@ export const initDashboard = (client, options, config) => {
     process.exit(0);
   })
 
+  screen.key('C-r', (char, details) => {
+    process.send('restart')
+  })
+
   const target = new URL(`${options.protocol}://${options.host}:${options.port}`)
 
   infoList.row('Tunnel', concat(connectionStatus, connectionDetails))
