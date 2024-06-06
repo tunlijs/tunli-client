@@ -27,6 +27,8 @@ const exec = (configRef) => {
 
   return async (port, host, options) => {
 
+    let protocol
+
     /** @type {AppConfig} */
     const config = configRef.value
 
@@ -46,6 +48,7 @@ const exec = (configRef) => {
     }
 
     if (isSharedArg(port)) {
+      protocol ??= port.value.url.protocol
       host ??= port.value.host ?? port.value.url?.host
       port = port.value.port ?? port.value.url?.port
       options.port ??= port
@@ -82,7 +85,8 @@ const exec = (configRef) => {
       server: config.proxyURL,
       path: undefined,
       allowCidr: options.allowCidr ?? config.allowCidr,
-      denyCidr: options.denyCidr ?? config.denyCidr
+      denyCidr: options.denyCidr ?? config.denyCidr,
+      protocol: protocol ?? 'http'
     }
 
     const client = new TunnelClient(clientOptions)

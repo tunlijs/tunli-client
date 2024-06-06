@@ -95,16 +95,19 @@ export const checkPort = (valueOrSharedArg, isArgument = false, value) => {
       const url = new URL(value)
 
       let port = url.port
+      const protocol = url.protocol.substring(0, url.protocol.length - 1)
+
       if (!port) {
-        if (url.protocol === 'http:') {
+        if (protocol === 'http') {
           port = 80
-        } else if (url.protocol === 'https:') {
+        } else if (protocol === 'https') {
           port = 443
         }
         url.port = port.toString()
       }
 
       valueOrSharedArg.value.url = {
+        protocol,
         host: url.hostname,
         port: parseInt(port)
       }

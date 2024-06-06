@@ -1,6 +1,7 @@
 import {Readable} from "stream";
-import http from "http";
 import {TunnelResponse} from "#src/net/http/TunnelResponse";
+import https from "node:https";
+import http from "node:http";
 
 class TunnelRequest extends Readable {
 
@@ -91,42 +92,44 @@ const setupErrorHandlers = (source, target) => {
 /**
  * @param {SocketIoRawRequestObject} req
  * @param {EventEmitter} eventEmitter
+ * @param {tunnelClientOptions} options
  */
-export const forwardTunnelRequestToProxyTarget = (req, eventEmitter) => {
+export const forwardTunnelRequestToProxyTarget = (req, eventEmitter, options) => {
+
   const tunnelRequest = new TunnelRequest({
     requestId: req.requestId,
     socket: req.tunnelSocket,
   });
 
-  const isWebSocket = req.headers.upgrade === 'websocket';
+  const isWebSocket = req.headers.upgrade === 'websocket'
+  const localReq = options.protocol === 'https' ? https.request(req) : http.request(req)
 
-  const localReq = http.request(req);
-  tunnelRequest.pipe(localReq);
+  tunnelRequest.pipe(localReq)
 
   setupErrorHandlers(tunnelRequest, localReq)
 
   const onLocalResponse = (localRes) => {
-    localReq.off('error', onLocalError);
+    localReq.off('error', onLocalError)
     if (isWebSocket && localRes.upgrade) {
-      return;
+      return
     }
 
     const tunnelResponse = new TunnelResponse({
       responseId: req.requestId,
       socket: req.tunnelSocket,
-    });
+    })
 
     tunnelResponse.writeHead(
       localRes.statusCode,
       localRes.statusMessage,
       localRes.headers,
       localRes.httpVersion
-    );
-    localRes.pipe(tunnelResponse);
+    )
+    localRes.pipe(tunnelResponse)
     if (!isWebSocket) {
       eventEmitter.emit('response', localRes, req)
     }
-  };
+  }
   const onLocalError = (error) => {
 
     let statusCode = 500
@@ -144,31 +147,31 @@ export const forwardTunnelRequestToProxyTarget = (req, eventEmitter) => {
     }
 
     eventEmitter.emit('response', {statusCode, statusMessage}, req)
-    localReq.off('response', onLocalResponse);
-    req.tunnelSocket.emit('request-error', req.requestId, error && error.message);
-    tunnelRequest.destroy(error);
-  };
+    localReq.off('response', onLocalResponse)
+    req.tunnelSocket.emit('request-error', req.requestId, error && error.message)
+    tunnelRequest.destroy(error)
+  }
   const onUpgrade = (localRes, localSocket, localHead) => {
     if (localHead && localHead.length) {
-      localSocket.unshift(localHead);
+      localSocket.unshift(localHead)
     }
 
     const tunnelResponse = new TunnelResponse({
       responseId: req.requestId,
       socket: req.tunnelSocket,
       duplex: true,
-    });
+    })
 
-    tunnelResponse.writeHead(null, null, localRes.headers);
+    tunnelResponse.writeHead(null, null, localRes.headers)
     localSocket
       .pipe(tunnelResponse)
-      .pipe(localSocket);
-  };
+      .pipe(localSocket)
+  }
 
-  localReq.once('error', onLocalError);
-  localReq.once('response', onLocalResponse);
+  localReq.once('error', onLocalError)
+  localReq.once('response', onLocalResponse)
 
   if (isWebSocket) {
-    localReq.on('upgrade', onUpgrade);
+    localReq.on('upgrade', onUpgrade)
   }
 }

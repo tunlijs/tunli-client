@@ -38,6 +38,7 @@ export class List extends ElementNode {
     this.#options.maxLength = options.maxLength ?? this.#options.length
     this.#options.minLength = options.minLength ?? options.maxLength ?? this.#options.length ?? 0
     this.#options.minWidth = options.minWidth ?? 0
+    this.#options.maxWidth = options.maxWidth ?? Infinity
     this.#options.reverse = options.reverse === true
     this.#screen = this.screen
 
@@ -69,6 +70,28 @@ export class List extends ElementNode {
 
     this.#screen.append(this.#box)
   }
+
+  /**
+   * @param {ListRow} row
+   * @return {string}
+   */
+  #formatRow(row) {
+    let contentRow = ``
+
+    const lastCell = row.lastCell
+
+    for (const cell of row.cells) {
+
+      if (cell !== lastCell) {
+        const cellWidth = this.#calWidth(cell)
+        contentRow += padEndIgnoreControlChars(cell.content, cellWidth - 1, ' ', '...') + ' '
+      }
+    }
+
+    contentRow += `${lastCell.content}`
+    return contentRow
+  }
+
 
   /**
    * @returns {?ListRow}
@@ -147,22 +170,7 @@ export class List extends ElementNode {
   #updateRow(row) {
     let spacing = 1
 
-    const formatRow = (row) => {
-      let contentRow = ``
-
-      const lastCell = row.lastCell
-
-      for (const cell of row.cells) {
-
-        if (cell !== lastCell) {
-          contentRow += padEndIgnoreControlChars(cell.content, this.#calWidth(cell))
-        }
-      }
-
-      contentRow += `${lastCell.content}`
-      return contentRow
-    }
-    this.#box.setLine(row.lineNumber, formatRow(row))
+    this.#box.setLine(row.lineNumber, this.#formatRow(row))
     // this.#screen.render()
   }
 
@@ -172,15 +180,21 @@ export class List extends ElementNode {
   #calWidth(cell) {
     const spacing = 1
     let set = this.#options.minWidth
+    let max = this.#options.maxWidth
 
     if (Array.isArray(this.#options.minWidth)) {
       set = this.#options.minWidth[cell.index]
     }
+    if (Array.isArray(this.#options.maxWidth)) {
+      max = this.#options.maxWidth[cell.index]
+    }
 
-    return Math.max(
-      set ?? 0,
-      cell.column.width + spacing
-    )
+    return Math.min(
+      max ?? Infinity,
+      Math.max(
+        set ?? 0,
+        cell.column.width + spacing
+      ))
   }
 
   #render(needsUpdate, append) {
@@ -189,34 +203,14 @@ export class List extends ElementNode {
     const rows = this.#rows
     const visibleRows = this.#rows.filter(row => !row.hidden)
 
-    /**
-     * @param {ListRow} row
-     * @return {string}
-     */
-    const formatRow = (row) => {
-      let contentRow = ``
-
-      const lastCell = row.lastCell
-
-      for (const cell of row.cells) {
-
-        if (cell !== lastCell) {
-          contentRow += padEndIgnoreControlChars(cell.content, this.#calWidth(cell))
-        }
-      }
-
-      contentRow += `${lastCell.content}`
-      return contentRow
-    }
-
     if (append) {
-      this.#box.insertLine(visibleRows.length - 1, formatRow(rows[rows.length - 1]))
+      this.#box.insertLine(visibleRows.length - 1, this.#formatRow(rows[rows.length - 1]))
     }
 
     if (needsUpdate) {
       for (let i = 0; i < visibleRows.length; i++) {
         const rowId = this.#options.reverse ? visibleRows.length - 1 - i : i
-        this.#box.setLine(i, formatRow(visibleRows[rowId]))
+        this.#box.setLine(i, this.#formatRow(visibleRows[rowId]))
       }
     }
 

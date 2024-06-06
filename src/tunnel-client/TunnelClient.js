@@ -1,5 +1,4 @@
 import {securedHttpClient} from "#lib/HttpClient";
-import HttpsProxyAgent from "https-proxy-agent";
 import {forwardTunnelRequestToProxyTarget} from "#src/net/http/TunnelRequest";
 import {io} from "socket.io-client";
 import EventEmitter from "node:events";
@@ -62,17 +61,20 @@ export class TunnelClient extends EventEmitter {
       const isWebSocket = request.headers.upgrade === 'websocket';
 
       request.port = options.port;
-      request.hostname = options.host;
+      request.hostname = options.host; // TODO hostanme : www.foo.bar.de vs host: www.foo.bar:80
+      request.rejectUnauthorized = false
 
       if (options.origin) {
         request.headers.host = options.origin;
+      } else {
+        request.headers.host = request.hostname
       }
 
       if (!isWebSocket) {
         this.emit('request', request)
       }
 
-      forwardTunnelRequestToProxyTarget(request, this)
+      forwardTunnelRequestToProxyTarget(request, this, this.#options)
     })
   }
 
@@ -93,6 +95,7 @@ export class TunnelClient extends EventEmitter {
   }
 
   async init(dashboard) {
+
     const params = await this.#createParameters(dashboard)
     this.#socket = io(this.#options.server, params)
     this.#bindEvents()
@@ -126,11 +129,6 @@ export class TunnelClient extends EventEmitter {
 
     if (options.path) {
       initParams.extraHeaders['path-prefix'] = options.path;
-    }
-
-    const http_proxy = process.env.https_proxy || process.env.http_proxy;
-    if (http_proxy) {
-      initParams.agent = new HttpsProxyAgent(http_proxy);
     }
 
     return initParams

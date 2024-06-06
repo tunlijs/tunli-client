@@ -44,6 +44,14 @@ export class Screen extends EventEmitter {
     return this.#elements
   }
 
+  get width() {
+    return this.#screen.width
+  }
+
+  get height() {
+    return this.#screen.height
+  }
+
   /**
    * @param {string|array} key
    * @param {keypressEventListener} callback
@@ -86,7 +94,7 @@ export class Screen extends EventEmitter {
   }
 
   /**
-   * @param {cliListOption} [options]
+   * @param {...cliListOption} [options]
    * @returns {List}
    */
   list(options) {

@@ -32,7 +32,8 @@ export type cliListOption = {
   minLength?: number
   length?: number
   reverse?: boolean
-  minWidth?: number | (number | boolean)[]
+  minWidth?: number | Array<number|string|boolean>
+  maxWidth?: number | Array<number|string|boolean>
 }
 
 export type profileDump = {}
@@ -79,10 +80,11 @@ export interface AppConfig {
   dump(): profileDump
 }
 
-
+export type protocol = "http" | "https"
 export type ipCidr = string
 export type profileAlias = string
 export type tunnelClientOptions = {
+  protocol: protocol
   self: boolean
   port: number
   host: string

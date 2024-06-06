@@ -68,7 +68,13 @@ export const initDashboard = (client, options, config) => {
   screen.row('HTTP Requests')
   screen.line()
 
-  const accessLog = screen.list({length: 30, reverse: true, minWidth: [undefined, 30]})
+  const accessLog = screen.list({
+    length: 30,
+    reverse: true,
+    minWidth: [undefined, 30],
+    maxWidth: [undefined, screen.width - 35]
+  })
+
   client.on('tunnel-connection-established', () => {
     connectionStatus.value = chalk.bold(chalk.green('online'))
     connectionDetails.value = ''
