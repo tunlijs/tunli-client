@@ -1,7 +1,7 @@
 {
   "name": "tunli",
   "description": "Node.js application for creating HTTP tunnels to make local software projects accessible over the internet.",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "main": "bin/tunli",
   "bin": {
     "tunli": "bin/tunli"
@@ -41,5 +41,11 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
   },
-  "license": "GPL-3.0"
+  "homepage": "https://tunli.app",
+  "bugs": {
+    "email": "dev@tunli.app",
+    "url": "https://github.com/tunlijs/tunli-client/issues"
+  },
+  "license": "GPL-3.0",
+  "readme": "README.md"
 }
