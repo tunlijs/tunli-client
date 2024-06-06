@@ -116,9 +116,9 @@ export const createCommandHTTP = (program) => {
 
   cmd.option('--host <string>', 'setting hostname', bindArgs(checkHost, sharedArgument, false))
   cmd.option('--port <string>', 'setting port', bindArgs(checkPort, sharedArgument, false))
-  cmd.option('--allow-cidr <string>', 'allow-cidr', validateArrayArguments(validateIpV4))
-  cmd.option('--deny-cidr <string>', 'deny-cidr', validateArrayArguments(validateIpV4))
-  cmd.option('--self', 'allow self only', false)
+  cmd.option('--allow, --allow-cidr <string>', 'allow-cidr', validateArrayArguments(validateIpV4))
+  cmd.option('--deny, --deny-cidr <string>', 'deny-cidr', validateArrayArguments(validateIpV4))
+  cmd.option('--allow-self, --self', 'allow self only', false)
   cmd.option('--save [alias]', 'save current settings as alias/local')
   cmd.action(exec(configRef, cmd, program))
 
