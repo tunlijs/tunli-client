@@ -1,5 +1,6 @@
 import EventEmitter from "node:events";
 import {ListCell} from "#src/cli-app/elements/List/ListCell";
+import {isRef} from "#src/core/Ref";
 
 export class ListRow extends EventEmitter {
 
@@ -15,8 +16,9 @@ export class ListRow extends EventEmitter {
   /**
    * @type {ListRow}
    */
-  #rowBefore
+  #_rowBefore
   #deleted = false
+  #hidden = false
 
   /**
    * @param {ListCell[]} cells
@@ -26,11 +28,29 @@ export class ListRow extends EventEmitter {
     this.#cells = cells
     this.#rowBefore = rowNodeBefore
 
-    rowNodeBefore?.on('delete', (rowBefore) => {
+    this.#rowBefore?.on('delete', (rowBefore) => {
       this.#rowBefore = rowBefore?.#rowBefore
     })
 
     cells.forEach(cell => cell.row = this)
+  }
+
+  /**
+   * @returns {ListRow}
+   */
+  get #rowBefore() {
+    if (this.#_rowBefore?.hidden) {
+      return this.#_rowBefore.#rowBefore
+    }
+
+    return this.#_rowBefore
+  }
+
+  /**
+   * @param {ListRow} rowBefore
+   */
+  set #rowBefore(rowBefore) {
+    this.#_rowBefore = rowBefore
   }
 
   get length() {
@@ -60,6 +80,31 @@ export class ListRow extends EventEmitter {
    */
   get lastCell() {
     return this.#cells[this.#cells.length - 1]
+  }
+
+  get hidden() {
+    return this.#hidden
+  }
+
+  set hidden(hidden) {
+
+    if (this.#hidden === hidden) {
+      return
+    }
+
+    this.#hidden = hidden
+    this.emit(hidden ? 'hide' : 'show')
+  }
+
+  if(renderIfCallback) {
+    const result = renderIfCallback()
+    if (isRef(result)) {
+      result.on('update', (val) => this.hidden = !val)
+      this.hidden = !result.value
+    } else {
+      this.hidden = !result
+    }
+    return this
   }
 
   delete() {

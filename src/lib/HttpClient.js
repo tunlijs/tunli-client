@@ -42,6 +42,13 @@ const createClient = (options = {}) => {
 export const httpClient = createClient();
 
 /**
+ * @type {AxiosInstance}
+ */
+export const npmApiClient = createClient({
+  baseURL: 'https://registry.npmjs.org/'
+});
+
+/**
  * @param {string} token - Der Authentifizierungs-Token.
  * @returns {AxiosInstance} - Eine konfigurierte Axios-Instanz mit Authentifizierung.
  */

@@ -52,6 +52,14 @@ export class Screen extends EventEmitter {
     this.#screen.key(key, callback)
   }
 
+  /**
+   * @param {string|array} key
+   * @param {keypressEventListener} callback
+   */
+  onceKey(key, callback) {
+    this.#screen.onceKey(key, callback)
+  }
+
   render() {
     this.#screen.render()
   }

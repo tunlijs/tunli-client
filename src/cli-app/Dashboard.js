@@ -3,6 +3,9 @@ import {dirnameFromMeta, readJsonFile, searchFileInDirectoryTree} from "#src/cor
 import {ref} from "#src/core/Ref";
 import {trimEnd} from "#src/utils/stringFunctions";
 import chalk from "chalk";
+import {getLatestVersion} from "#lib/Flow/getLatestVersion";
+import {exec} from 'child_process'
+import {checkGlobalInstallation, checkLocalInstallation} from "#src/utils/npmFunctions";
 
 /**
  *
@@ -23,6 +26,34 @@ export const initDashboard = (client, options, config) => {
 
   const blockedCount = ref(0)
   const lastBlockedIp = ref('')
+  const availableUpdate = ref('')
+
+  getLatestVersion().then((version) => {
+    if (version && version !== packageJson.version) {
+      availableUpdate.value = chalk.yellow(`update available (version ${version}, Ctrl-U to update)`)
+
+      screen.onceKey('C-u', async (char, details) => {
+        availableUpdate.value = chalk.yellow('Updating...')
+        let modifier
+        if (await checkGlobalInstallation(packageJson.name)) {
+          modifier = ' -g'
+        } else if (!await checkLocalInstallation(packageJson.name)) {
+          availableUpdate.value = chalk.red('Update failed.')
+          return
+        }
+
+        const npmUpdateCommand = `npm${modifier} update ${packageJson.name} --registry https://registry.npmjs.org`
+
+        exec(npmUpdateCommand, (error, stdout, stderr) => {
+          if (error || stderr) {
+            availableUpdate.value = chalk.red('Update failed. Reason 2.')
+            return;
+          }
+          availableUpdate.value = chalk.green('Update done. Please restart tunli.')
+        })
+      })
+    }
+  })
 
   screen.row(packageJson.name)
   screen.row('(Ctrl+C to quit)', {
@@ -33,6 +64,7 @@ export const initDashboard = (client, options, config) => {
   screen.row("")
 
   const infoList = screen.list({minWidth: 30})
+
   screen.row('HTTP Requests')
   screen.line()
 
@@ -84,6 +116,7 @@ export const initDashboard = (client, options, config) => {
 
   infoList.row('Tunnel', concat(connectionStatus, connectionDetails))
   infoList.row('Version', packageJson.version)
+  infoList.row(chalk.yellow('Update'), availableUpdate).if(() => availableUpdate)
   infoList.row('Profile', config.profile)
   infoList.row('Config', config.configPath)
 

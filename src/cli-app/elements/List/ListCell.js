@@ -1,4 +1,5 @@
 import {isRef} from "#src/core/Ref";
+import {removeControlChars} from "#src/utils/stringFunctions";
 
 export class ListCell {
   /**
@@ -15,6 +16,8 @@ export class ListCell {
    */
   #row
 
+  #contentLength
+
   /**
    *
    * @param content
@@ -22,7 +25,7 @@ export class ListCell {
    */
   constructor(content, column, index) {
 
-    this.index=index
+    this.index = index
     if (isRef(content)) {
       content = content.value
     }
@@ -41,6 +44,7 @@ export class ListCell {
       }
     }
 
+    this.#contentLength = removeControlChars(content).length
     this.#content = content
     this.#column = column
     this.#column.push(this)
@@ -55,7 +59,7 @@ export class ListCell {
   }
 
   get contentLength() {
-    return this.#content.length
+    return this.#contentLength
   }
 
   get content() {
