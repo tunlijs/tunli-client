@@ -49,7 +49,7 @@ export const initDashboard = (client, options, config) => {
             availableUpdate.value = chalk.red('Update failed. Reason 2.')
             return;
           }
-          availableUpdate.value = chalk.green('Update done. Please restart tunli.')
+          availableUpdate.value = chalk.green('Update done. Please restart tunli. (Ctrl+R to restart)')
         })
       })
     }
