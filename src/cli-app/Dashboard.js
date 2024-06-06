@@ -118,7 +118,7 @@ export const initDashboard = (client, options, config) => {
     process.exit(0);
   })
 
-  const target = new URL(`http://${options.host}:${options.port}`)
+  const target = new URL(`${options.protocol}://${options.host}:${options.port}`)
 
   infoList.row('Tunnel', concat(connectionStatus, connectionDetails))
   infoList.row('Version', packageJson.version)

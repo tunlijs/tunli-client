@@ -23,11 +23,15 @@ import {initDashboard} from "#src/cli-app/Dashboard";
  * @param {Ref} configRef
  * @returns {httpCommandExec}
  */
-const exec = (configRef) => {
+const exec = (configRef, cmd, program) => {
 
   return async (port, host, options) => {
 
     let protocol
+
+    if (['http', 'https'].includes(cmd.parent.args[0])) {
+      protocol = cmd.parent.args[0]
+    }
 
     /** @type {AppConfig} */
     const config = configRef.value
@@ -48,7 +52,7 @@ const exec = (configRef) => {
     }
 
     if (isSharedArg(port)) {
-      protocol ??= port.value.url.protocol
+      protocol ??= port.value.url?.protocol
       host ??= port.value.host ?? port.value.url?.host
       port = port.value.port ?? port.value.url?.port
       options.port ??= port
@@ -101,6 +105,7 @@ export const createCommandHTTP = (program) => {
 
   const configRef = ref()
   const cmd = new Command('http')
+  cmd.alias('https')
 
   selectConfigOption(cmd, configRef)
   // validateAuthToken(cmd, configRef)
@@ -115,7 +120,7 @@ export const createCommandHTTP = (program) => {
   cmd.option('--deny-cidr <string>', 'deny-cidr', validateArrayArguments(validateIpV4))
   cmd.option('--self', 'allow self only', false)
   cmd.option('--save [alias]', 'save current settings as alias/local')
-  cmd.action(exec(configRef))
+  cmd.action(exec(configRef, cmd, program))
 
   addExample('http localhost:80', 'HTTP Forward to localhost:80')
   addExample('', 'Forward to port from default config, host from default config')
