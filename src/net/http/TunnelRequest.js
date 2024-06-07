@@ -109,10 +109,14 @@ export const forwardTunnelRequestToProxyTarget = (req, eventEmitter, options) =>
   setupErrorHandlers(tunnelRequest, localReq)
 
   const onLocalResponse = (localRes) => {
+
     localReq.off('error', onLocalError)
+
     if (isWebSocket && localRes.upgrade) {
       return
     }
+
+    if (!isWebSocket) rewriteResponse(localRes, options)
 
     const tunnelResponse = new TunnelResponse({
       responseId: req.requestId,
@@ -174,4 +178,52 @@ export const forwardTunnelRequestToProxyTarget = (req, eventEmitter, options) =>
   if (isWebSocket) {
     localReq.on('upgrade', onUpgrade)
   }
+}
+
+
+/**
+ * @param {Response<IncomingMessage>} localRes
+ * @param {tunnelClientOptions} options
+ */
+const rewriteResponse = (localRes, options) => {
+
+  options.proxyURL ??= options.server
+
+  const hostSearch = options.origin ?? options.host
+  const {protocol: protocolReplace, hostname: hostReplace} = new URL(options.proxyURL)
+  const baseURL = new URL(`${options.protocol}://${hostSearch}:${options.port}`).toString()
+
+  if (localRes.statusCode === 301) {
+    delete localRes.headers.location
+  }
+
+  let location = localRes.headers.location
+  let setCookie = localRes.headers['set-cookie']
+
+  if (!setCookie || !Array.isArray(setCookie)) {
+    setCookie = null
+  }
+
+  if (location) {
+    location = new URL(location, baseURL).toString()
+  }
+
+  if (location && location.charAt(0) !== '/' && location.startsWith(baseURL)) {
+    localRes.headers.location = location.replace(baseURL, options.proxyURL)
+  }
+
+  if (setCookie) {
+    localRes.headers['set-cookie'] = setCookie.map(cookie => {
+      return updateCookieDomain(cookie, hostReplace) // TODO MOVE THIS PART TO SERVER
+    })
+  }
+}
+
+function extractDomainFromCookieString(cookie) {
+  const domainMatch = cookie.match(/Domain=([^;]+)/);
+  return domainMatch ? domainMatch[1] : null;
+}
+
+function updateCookieDomain(cookie, newDomain) {
+  return cookie.replace(/Domain=[^;]+/, `Domain=${newDomain}`);
 }
