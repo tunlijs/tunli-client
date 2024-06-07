@@ -111,3 +111,8 @@ export type keypressEventDetails = {
 export interface keypressEventListener {
   (char: string, details: keypressEventDetails): void
 }
+
+
+export type tunliProxyOptions = {
+
+}

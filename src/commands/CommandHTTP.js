@@ -10,6 +10,7 @@ import {renewProxyUrlRegistration, requestNewProxyUrl} from "#lib/Flow/proxyUrl"
 import {getCurrentIp} from "#lib/Flow/getCurrentIp";
 import {arrayUnique} from "#src/utils/arrayFunctions";
 import {initDashboard} from "#src/cli-app/Dashboard";
+import {proxy} from "#lib/Proxy";
 
 /**
  * @callback httpCommandExec
@@ -94,9 +95,15 @@ const exec = (configRef, cmd, program) => {
       protocol: options.protocol
     }
 
+    const useDashboard = process.env.DASHBOARD !== 'off'
+
     const client = new TunnelClient(clientOptions)
-    const dashboard = initDashboard(client, clientOptions, config)
+    const dashboard = useDashboard ? initDashboard(client, clientOptions, config) : null
     await client.init(dashboard)
+
+    if (!useDashboard) {
+      console.log(clientOptions)
+    }
   }
 }
 /**

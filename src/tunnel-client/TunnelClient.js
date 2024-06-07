@@ -94,6 +94,10 @@ export class TunnelClient extends EventEmitter {
     setInterval(ping, 5000)
   }
 
+  /**
+   * @param [dashboard]
+   * @return {Promise<TunnelClient>}
+   */
   async init(dashboard) {
 
     const params = await this.#createParameters(dashboard)
@@ -108,7 +112,7 @@ export class TunnelClient extends EventEmitter {
     const webSocketCapturePath = await securedHttpClient(options.authToken).get('/capture_path')
 
     if (webSocketCapturePath.error) {
-      dashboard.destroy()
+      dashboard?.destroy()
       if (webSocketCapturePath.error?.message === 'Request failed with status code 401') {
         console.error('missing authorization, check your registration and try again')
       } else {
