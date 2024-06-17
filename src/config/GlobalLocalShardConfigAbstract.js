@@ -1,4 +1,4 @@
-import {checkHost, checkInArray, checkIpV4Cidr, checkPort, checkUrl} from "#src/utils/checkFunctions";
+import {checkHost, checkInArray, checkIpV4Cidr, checkMd5, checkPort, checkUrl} from "#src/utils/checkFunctions";
 import {ConfigAbstract, VISIBILITY_PUBLIC} from "#src/config/ConfigAbstract";
 import {property} from "#src/config/PropertyConfig";
 import {ConfigManager} from "#src/config/ConfigManager";
@@ -18,6 +18,19 @@ export class GlobalLocalShardConfigAbstract extends ConfigAbstract {
       defaultValue: [],
       validate(val) {
         return val.map(checkIpV4Cidr)
+      }
+    }),
+    proxyURLs: property({
+      defaultValue: {},
+      visibility: VISIBILITY_PUBLIC,
+      writeable: true,
+      type: Array,
+      validate(val) {
+        const final = {}
+        for (const [hash, proxyURL] of Object.entries(val)) {
+          final[checkMd5(hash)] = checkUrl(proxyURL)
+        }
+        return final
       }
     }),
     proxyURL: property({

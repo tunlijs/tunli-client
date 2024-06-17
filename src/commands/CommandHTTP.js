@@ -10,7 +10,48 @@ import {renewProxyUrlRegistration, requestNewProxyUrl} from "#lib/Flow/proxyUrl"
 import {getCurrentIp} from "#lib/Flow/getCurrentIp";
 import {arrayUnique} from "#src/utils/arrayFunctions";
 import {initDashboard} from "#src/cli-app/Dashboard";
-import {proxy} from "#lib/Proxy";
+import {md5} from "#src/utils/hashFunctions";
+
+
+/**
+ *
+ * @param {AppConfig} config
+ * @param {tunnelClientOptions} options
+ */
+const computeProxyURL = async (config, options) => {
+
+  // console.log(new URL(`${options.protocol}://${options.host ?? config.host}:${options.port ?? config.port}`).toString())
+
+  const targetUrlHash = md5(new URL(`${options.protocol}://${options.host ?? config.host}:${options.port ?? config.port}`))
+
+  if (config.profile === 'default') {
+    let proxyUrl = config.proxyURLs[targetUrlHash]
+
+    if (proxyUrl) {
+      proxyUrl = await renewProxyUrlRegistration(proxyUrl, config.authToken)
+    }
+
+    if (!proxyUrl) {
+      proxyUrl = await requestNewProxyUrl(config.authToken)
+      config.proxyURLs[targetUrlHash] = proxyUrl
+      config.update({proxyURLs: config.proxyURLs})
+    }
+
+    config.proxyURL = proxyUrl
+
+    console.log(config.proxyURL)
+    return
+  }
+
+  if (config.proxyURL) {
+    config.proxyURL = await renewProxyUrlRegistration(config.proxyURL, config.authToken)
+  }
+
+  if (!config.proxyURL) {
+    config.proxyURL = await requestNewProxyUrl(config.authToken)
+    config.update({proxyURL: config.proxyURL})
+  }
+}
 
 /**
  * @callback httpCommandExec
@@ -43,13 +84,9 @@ const exec = (configRef, cmd, program) => {
       options.allowCidr = arrayUnique(options.allowCidr)
     }
 
-    if (config.proxyURL) {
-      config.proxyURL = await renewProxyUrlRegistration(config.proxyURL, config.authToken)
-    }
-
-    if (!config.proxyURL) {
-      config.proxyURL = await requestNewProxyUrl(config.authToken)
-      options.save ??= true
+    if (!config.authToken) {
+      console.error("error: Missing authToken. Please run register firstly")
+      process.exit()
     }
 
     if (isSharedArg(port)) {
@@ -63,6 +100,8 @@ const exec = (configRef, cmd, program) => {
     options.port ??= port
     options.host ??= host
     options.protocol ??= protocol ?? 'http'
+
+    await computeProxyURL(config, options)
 
     const save = options.save
     delete options.save
@@ -95,9 +134,23 @@ const exec = (configRef, cmd, program) => {
       protocol: options.protocol
     }
 
-    const useDashboard = process.env.DASHBOARD !== 'off'
+    const useDashboard = process.env.TUNLI_DASHBOARD !== 'off'
 
     const client = new TunnelClient(clientOptions)
+
+    client.once('tunnel-connection-error', async (error) => {
+      error.stopPropagation = true
+      if (error.data?.connection_exists) {
+        clientOptions.server = await requestNewProxyUrl(config.authToken)
+
+        if (useDashboard) {
+          dashboard.forwardingUrl = clientOptions.server
+        }
+
+        await client.init()
+      }
+    })
+
     const dashboard = useDashboard ? initDashboard(client, clientOptions, config) : null
     await client.init(dashboard)
 

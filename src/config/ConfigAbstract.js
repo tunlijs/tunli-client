@@ -1,4 +1,4 @@
-import {existsSync, writeFileSync} from "fs"
+import {existsSync, readFileSync, writeFileSync} from "fs"
 import {dirname} from 'path'
 import {ensureDirectoryExists} from "#src/core/FS/utils";
 import {PropertyConfig} from "#src/config/PropertyConfig";
@@ -265,6 +265,30 @@ export class ConfigAbstract {
     }
 
     writeFileSync(this.#path, JSON.stringify(this.#profileData, null, 2) + "\n")
+    return this
+  }
+
+  /**
+   * @param {{[p:string]: any}} value
+   * @return {ConfigAbstract}
+   */
+  update(value) {
+    ensureDirectoryExists(dirname(this.#path))
+
+    const isSystem = this.#data === this.#profileData.system
+    const profileData = JSON.parse(readFileSync(this.#path, 'utf-8'))
+    profileData.system ??= {}
+    profileData.profile ??= {}
+    profileData.profile[this.profile] ??= {}
+
+    const updateData = isSystem ? profileData.system : profileData.profile[this.profile]
+
+    for (const [k, v] of Object.entries(value)) {
+      updateData[k] = v
+      this[k] = v
+    }
+
+    writeFileSync(this.#path, JSON.stringify(profileData, null, 2) + "\n")
     return this
   }
 

@@ -32,8 +32,8 @@ export type cliListOption = {
   minLength?: number
   length?: number
   reverse?: boolean
-  minWidth?: number | Array<number|string|boolean>
-  maxWidth?: number | Array<number|string|boolean>
+  minWidth?: number | Array<number | string | boolean>
+  maxWidth?: number | Array<number | string | boolean>
 }
 
 export type profileDump = {}
@@ -53,6 +53,7 @@ export interface AppConfig {
   host: string
   authToken: string
   proxyURL: proxyURL
+  proxyURLs: proxyURL[]
   path: undefined
   origin: string
   denyCidr?: ipCidr[]
@@ -69,6 +70,8 @@ export interface AppConfig {
   copyCurrentProfileTo(profile: profileAlias): this
 
   save(): this
+
+  update(value: { [p: string]: any }): this
 
   useSystem(): AppConfig
 
@@ -113,6 +116,4 @@ export interface keypressEventListener {
 }
 
 
-export type tunliProxyOptions = {
-
-}
+export type tunliProxyOptions = {}

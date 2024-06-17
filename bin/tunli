@@ -5,7 +5,7 @@ import {exit} from 'node:process'
 import {resolve} from "path";
 import {dirnameFromMeta} from "#src/core/FS/utils";
 
-setCursorVisibility(false)
+if (process.env.TUNLI_DASHBOARD !== 'off') setCursorVisibility(false)
 const exitCode = await proxyChildProcess(resolve(dirnameFromMeta(import.meta), '../client.js'))
-setCursorVisibility(true)
+if (process.env.TUNLI_DASHBOARD !== 'off') setCursorVisibility(true)
 exit(exitCode)

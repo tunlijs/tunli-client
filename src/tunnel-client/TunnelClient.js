@@ -95,7 +95,7 @@ export class TunnelClient extends EventEmitter {
   }
 
   /**
-   * @param [dashboard]
+   * @param {Dashboard} [dashboard]
    * @return {Promise<TunnelClient>}
    */
   async init(dashboard) {
@@ -107,6 +107,10 @@ export class TunnelClient extends EventEmitter {
     return this
   }
 
+  /**
+   * @param {Dashboard} dashboard
+   * @return {Promise<{path: any, transports: string[], auth: {token: string}, extraHeaders: {}}>}
+   */
   async #createParameters(dashboard) {
     const options = this.#options
     const webSocketCapturePath = await securedHttpClient(options.authToken).get('/capture_path')

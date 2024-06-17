@@ -171,3 +171,12 @@ export const checkInArray = (val, arr) => {
 
   return val
 }
+
+export const checkMd5 = (hash) => {
+
+  if (!hash?.match(/^[0-9a-f]{32}$/i)) {
+    throw new InvalidArgumentError(`Value is not a valid md5 hash`)
+  }
+
+  return hash.toLowerCase()
+}
