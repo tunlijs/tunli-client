@@ -4,6 +4,7 @@ import {Row} from "#src/cli-app/elements/Row";
 import {ElementNode} from "#src/cli-app/elements/ElementNode";
 import {arrayRemoveEntry} from "#src/utils/arrayFunctions";
 import {Line} from "#src/cli-app/elements/Line";
+import {newFullScreenModal} from "#src/cli-app/Screen/FullScreenModal";
 
 export class Screen extends EventEmitter {
 
@@ -50,6 +51,10 @@ export class Screen extends EventEmitter {
 
   get height() {
     return this.#screen.height
+  }
+
+  newFullScreenModal(text) {
+    return newFullScreenModal(this, text)
   }
 
   /**

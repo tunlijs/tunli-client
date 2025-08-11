@@ -6,6 +6,7 @@ import chalk from "chalk";
 import {getLatestVersion} from "#lib/Flow/getLatestVersion";
 import {exec} from 'child_process'
 import {checkGlobalInstallation, checkLocalInstallation} from "#src/utils/npmFunctions";
+import QRCode from 'qrcode'
 
 export class Dashboard {
 
@@ -81,6 +82,13 @@ export class Dashboard {
     const blockedCount = ref(0)
     const lastBlockedIp = ref('')
     const availableUpdate = ref('')
+
+    screen.key('C-q', () => {
+      QRCode.toString(forwardingUrl.value, {type: 'terminal'}, (err, url) => {
+        if (err) throw err
+        screen.newFullScreenModal(url)
+      })
+    })
 
     getLatestVersion().then((version) => {
       if (version && version !== packageJson.version) {
@@ -182,6 +190,7 @@ export class Dashboard {
     infoList.row(chalk.yellow('Update'), availableUpdate).if(() => availableUpdate)
     infoList.row('Profile', config.profile)
     infoList.row('Config', config.configPath)
+    infoList.row('QR-Code', 'Ctrl-Q')
 
     if (allowedCidr || deniedCidr) infoList.row('')
     if (allowedCidr) infoList.row('Allowed', allowedCidr)
