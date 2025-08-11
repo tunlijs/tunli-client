@@ -32,3 +32,28 @@ export const padEndIgnoreControlChars = (string, maxLength, fillString = ' ', au
   const padding = ''.padEnd(maxLength - stringWithoutCC.length, fillString)
   return `${string}${padding}`
 }
+
+/**
+ * Replaces template placeholders in a string with corresponding values from a replacements object.
+ *
+ * @param {string} template - The string containing placeholders in the format {{ placeholder }}.
+ * @param {object} replacements - The object containing replacement values. Nested placeholders can be accessed using dot notation.
+ */
+export const replaceTemplatePlaceholders = (template, replacements) => {
+
+  return template.replace(/{{\s*([^{}|]+)\s*(\|[^{}]+)*\s*}}/ig, (match, placeholder) => {
+
+    placeholder = placeholder.trim()
+    const keys = placeholder.split('.')
+
+    let value = replacements
+    for (const part of keys) {
+      if (!value) {
+        break
+      }
+      value = value [part]
+    }
+
+    return value ?? ''
+  })
+}

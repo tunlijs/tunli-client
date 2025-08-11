@@ -126,6 +126,8 @@ Tunli relies on the following packages:
 
 For development purposes, you can start the application using nodemon to automatically restart it on file changes:
 
+_$ TUNLI_API_SERVER_URL=http://127.0.0.1:10000/api TUNLI_DASHBOARD=off TUNLI_SERVER=http://127.0.0.1:10000  TUNLI_PROXY_URL='http://127.0.0.1:10000/proxy/{{ uuid }}' node client.js register -f
+
 ```bash
 npm run dev
 ```

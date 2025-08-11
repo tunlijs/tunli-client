@@ -1,5 +1,6 @@
 import {securedHttpClient} from "#lib/HttpClient";
-import {SERVER_HOST} from "#lib/defs";
+import {TUNLI_PROXY_URL} from "#lib/defs";
+import {replaceTemplatePlaceholders} from "#src/utils/stringFunctions";
 
 export const requestNewProxyUrl = async (token) => {
 
@@ -10,7 +11,9 @@ export const requestNewProxyUrl = async (token) => {
     process.exit(1)
   }
 
-  return `https://${data}.${SERVER_HOST}`
+  return replaceTemplatePlaceholders(TUNLI_PROXY_URL, {
+    uuid: data
+  })
 }
 
 export const renewProxyUrlRegistration = async (proxyUrl, token) => {
