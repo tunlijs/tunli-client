@@ -6,3 +6,6 @@ tmp/
 placeholder/
 *.tunli/
 test.js
+dist/
+dist-sea/
+dev/

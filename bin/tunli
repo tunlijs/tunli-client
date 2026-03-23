@@ -1,11 +1,10 @@
 #!/bin/sh
 ":" //# comment; exec /usr/bin/env node --harmony "$0" "$@"
-import {proxyChildProcess, setCursorVisibility} from '#src/utils/cliFunctions'
+import {proxyChildProcess, setCursorVisibility} from '#utils/cliFunctions'
 import {exit} from 'node:process'
 import {resolve} from "path";
-import {dirnameFromMeta} from "#src/core/FS/utils";
+import {dirnameFromMeta} from "#core/FS/utils";
 
-if (process.env.TUNLI_DASHBOARD !== 'off') setCursorVisibility(false)
-const exitCode = await proxyChildProcess(resolve(dirnameFromMeta(import.meta), '../client.js'))
-if (process.env.TUNLI_DASHBOARD !== 'off') setCursorVisibility(true)
+const exitCode = await proxyChildProcess(resolve(dirnameFromMeta(import.meta), '../dist/client.js'))
+setCursorVisibility(true)
 exit(exitCode)

@@ -1,137 +1,213 @@
 # Tunli
 
-Tunli is a Node.js application that creates HTTP tunnels to make local software projects accessible over the internet.
-This is particularly useful for developing and testing applications that need to be reachable from anywhere.
+Tunli is a developer-first tunneling tool that gives you full control — use the official server at [tunli.app](https://tunli.app) or run your own with [tunli-server](https://github.com/tunlijs/tunli-server).
 
 ## Installation
 
-To install Tunli, run the following command:
+**Binary (no Node.js required):**
+
+```bash
+# Linux
+curl -L https://github.com/tunlijs/tunli-client/releases/latest/download/tunli-linux.tar.gz | tar -xz -C /usr/local/bin
+
+# macOS
+curl -L https://github.com/tunlijs/tunli-client/releases/latest/download/tunli-macos.tar.gz | tar -xz -C /usr/local/bin
+```
+
+Or download manually from the [releases page](https://github.com/tunlijs/tunli-client/releases).
+
+**via npm:**
 
 ```bash
 npm install -g tunli
 ```
 
-## Usage
+Requires Node.js >= 18.
 
-Tunli can be used from the command line with various commands and options. Here are some of the key commands:
+## Features
 
-### Display Help
+- Stable public URLs per profile
+- HTTP & WebSocket tunneling via a background daemon
+- Multiple simultaneous tunnels
+- Profiles & environments
+- Self-hosted relay servers
+- CIDR allow/deny access control
 
-```bash
-tunli --help
-```
+## Quick Start
 
-### Configure and View Settings
-
-```bash
-tunli config
-tunli config host localhost
-tunli config port 80
-```
-
-### Create HTTP Tunnel
+By default the client connects to the official server — no server setup required.
 
 ```bash
-tunli http [PORT] [HOST]
+# 1. Register (once)
+tunli register
+
+# 2. Start a tunnel to your local port
+tunli http 3000
+
+# 3. Watch live output
+tunli logs
 ```
 
-Example:
+`tunli http` hands the tunnel off to the background daemon and exits immediately. Use `tunli logs` or `tunli dashboard` to observe traffic.
+
+## Commands
+
+### `tunli http <port> [host]`
+
+Start a tunnel to a local HTTP service. The daemon is started automatically if it isn't running yet.
 
 ```bash
-tunli http localhost:80
+tunli http 3000
+tunli http 3000 127.0.0.1
+tunli http 3000 --save myapp      # save as a named profile for later reuse
 ```
 
-### Registration and Authentication
+Use `--save <name>` to persist the configuration as a profile. You can then start it again with `tunli use <profile>` or `tunli @<profile>`.
 
-To use Tunli, you need to register and authenticate.
+### `tunli use <profile>`
 
-#### Register
+Start a tunnel using a saved profile. Profiles are created via `tunli http --save` or managed with `tunli profile`.
+
+```bash
+tunli use myapp
+tunli @myapp                       # shorthand
+```
+
+### `tunli list`
+
+Show all active tunnels managed by the daemon.
+
+```bash
+tunli list
+```
+
+### `tunli dashboard [profile]`
+
+Attach to a running tunnel and show the live TUI dashboard. Defaults to the first active tunnel.
+
+```bash
+tunli dashboard
+tunli dashboard myapp
+```
+
+### `tunli logs [profile]`
+
+Attach to a running tunnel and stream live log output to stdout. Defaults to the first active tunnel.
+
+```bash
+tunli logs
+tunli logs myapp
+```
+
+### `tunli stop [profile]`
+
+Stop a running tunnel without stopping the daemon. Omit the profile name to stop the first active tunnel.
+
+```bash
+tunli stop myapp
+tunli stop
+```
+
+### `tunli daemon`
+
+Manage the background daemon process. The daemon is also started automatically when needed.
+
+```bash
+tunli daemon start
+tunli daemon stop
+tunli daemon restart
+tunli daemon status
+```
+
+### `tunli register`
+
+Register a new account and store the auth token.
 
 ```bash
 tunli register
+tunli register --force                                        # renew existing token
+tunli register --server https://api.myserver.com --name self  # self-hosted server
 ```
 
-#### Authenticate
+### `tunli auth <token>`
+
+Manually store an auth token (e.g. received via invitation).
 
 ```bash
-tunli auth <TOKEN>
+tunli auth <token>
 ```
 
-### Create an Invitation
+### `tunli init`
 
-Generate a shareable registration token:
+Initialize a local config file in the current directory. Local configs override the global config and are useful for per-project settings.
 
 ```bash
-tunli invite
+tunli init
+tunli init --force   # overwrite existing local config
 ```
 
-## Examples
+### `tunli config`
 
-Here are some examples of how to use Tunli:
-
-- Set the host for the local configuration:
-
-  ```bash
-  tunli config host localhost
-  ```
-
-- Set the port for the local configuration:
-
-  ```bash
-  tunli config port 80
-  ```
-
-- Show the local configuration:
-
-  ```bash
-  tunli config
-  ```
-
-- Show the global configuration:
-
-  ```bash
-  tunli config --global
-  ```
-
-- Forward HTTP requests to `localhost:80`:
-
-  ```bash
-  tunli http localhost:80
-  ```
-
-- Create a shareable registration token:
-
-  ```bash
-  tunli invite
-  ```
-
-- Register this client with a given token:
-
-  ```bash
-  tunli auth <TOKEN>
-  ```
-
-## Dependencies
-
-Tunli relies on the following packages:
-
-- `axios`: ^1.7.2
-- `blessed`: ^0.1.81
-- `chalk`: ^5.3.0
-- `commander`: ^12.1.0
-- `https-proxy-agent`: ^7.0.4
-- `socket.io-client`: ^4.7.5
-
-## Development
-
-For development purposes, you can start the application using nodemon to automatically restart it on file changes:
-
-_$ TUNLI_API_SERVER_URL=http://127.0.0.1:10000/api TUNLI_DASHBOARD=off TUNLI_SERVER=http://127.0.0.1:10000  TUNLI_PROXY_URL='http://127.0.0.1:10000/proxy/{{ uuid }}' node client.js register -f
+Show or modify the active configuration.
 
 ```bash
-npm run dev
+tunli config                               # show active config
+tunli config get host                      # read a single value
+tunli config set host 127.0.0.2            # set a value
+tunli config set port 3001 -p staging      # set in a named profile
+tunli config delete                        # remove the active config file
+tunli config delete -p staging             # remove a specific profile
+tunli config dump                          # dump global + local config
+tunli config relays                        # list registered relay servers
 ```
+
+Scope flags (available on most config commands):
+
+```
+--global / -g     use the global config (~/.tunli/config.json)
+--local  / -l     use the local config  (./.tunli/config.json)
+--profile / -p    target a specific profile
+```
+
+### `tunli profile`
+
+Manage tunnel profiles.
+
+```bash
+tunli profile list
+tunli profile use staging       # set staging as the default profile
+tunli profile delete staging    # remove a profile
+```
+
+### `tunli relay`
+
+Manage relay servers.
+
+```bash
+tunli relay list
+tunli relay use myserver        # switch the active relay server
+```
+
+## Architecture
+
+Tunli runs a background daemon (`~/.tunli/daemon.sock`) that manages all active tunnels. The CLI communicates with it via a Unix socket using newline-delimited JSON.
+
+- `tunli http` / `tunli use` — validate config, hand off to daemon, exit
+- `tunli daemon` — explicit daemon lifecycle management
+- `tunli list` — query active tunnels from the daemon
+- `tunli dashboard` / `tunli logs` — attach to the daemon event stream
+
+## Configuration
+
+Tunli stores its config in JSON files:
+
+| Scope  | Location                                               |
+|--------|--------------------------------------------------------|
+| Global | `~/.tunli/config.json`                                 |
+| Local  | `./.tunli/config.json` (per-project, takes precedence) |
+
+A profile holds the target `host`, `port`, `protocol`, saved `proxyURL`, and optional CIDR allow/deny lists.
 
 ## License
 
-Tunli is licensed under the GPL-3.0 License.
+GPL-3.0

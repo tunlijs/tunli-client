@@ -1,44 +1,64 @@
 {
   "name": "tunli",
-  "description": "Node.js application for creating HTTP tunnels to make local software projects accessible over the internet.",
-  "version": "0.0.27",
+  "description": "Developer-first HTTP tunneling CLI with daemon-based tunnel management, profiles, and self-hosted server support.",
+  "version": "0.1.0",
   "main": "bin/tunli",
   "bin": {
     "tunli": "bin/tunli"
   },
   "scripts": {
-    "dev": "nodemon client.js"
+    "prepublishOnly": "npm test",
+    "build": "npm run clean && tsc",
+    "build:sea": "npm run clean && tsc && scripts/build-sea.sh",
+    "clean": "rm -rf dist",
+    "test": "npm run build && node --test",
+    "test:coverage": "npm run build && node --test --experimental-test-coverage --test-coverage-exclude='test/**'",
+    "test:coverage:c8": "npm run build && npx c8 node --test",
+    "test:coverage:lcov": "npm run build && npx c8 --src src node --enable-source-maps --test"
   },
   "keywords": [
-    "HTTP tunnel",
+    "tunnel",
+    "http tunnel",
     "reverse proxy",
-    "remote access",
     "local development",
-    "Node.js"
+    "websocket",
+    "daemon",
+    "self-hosted"
   ],
   "author": "Pascal Pfeifer <pascal@tunli.app>",
   "imports": {
-    "#lib/*": "./src/lib/*.js",
-    "#commands/*": "./src/commands/*.js",
-    "#src/*": "./src/*.js"
+    "#*": "./dist/*.js"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "dependencies": {
-    "axios": "^1.11.0",
-    "blessed": "^0.1.81",
+    "@pfeiferio/ipv4": "^1.1.0",
+    "@pfeiferio/string-interpolate": "^1.0.0",
     "chalk": "^5.5.0",
-    "commander": "^14.0.0",
+    "ink": "^6.8.0",
     "qrcode": "^1.5.4",
+    "react": "^19.2.4",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.0.0",
+    "esbuild": "^0.27.4",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tunlijs/tunli-client"
+    "url": "git+https://github.com/tunlijs/tunli-client"
   },
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org"
   },
   "homepage": "https://tunli.app",
@@ -49,6 +69,6 @@
   "license": "GPL-3.0",
   "readme": "README.md",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }
