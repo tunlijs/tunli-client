@@ -1,0 +1,8 @@
+{
+  "main": "dist/tunli-launcher-bundle.js",
+  "output": "dist-sea/tunli-launcher",
+  "mainFormat": "module",
+  "disableExperimentalSEAWarning": true,
+  "useCodeCache": false,
+  "useSnapshot": false
+}

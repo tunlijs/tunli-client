@@ -1,6 +1,7 @@
-import {argv, stdout} from 'node:process';
-import EventEmitter from "node:events";
-import {spawn} from "child_process";
+import {argv, stdout} from 'node:process'
+import EventEmitter from "node:events"
+import {spawn} from "child_process"
+import {logDebug} from "#logger/logger"
 
 export const setCursorVisibility = (visible: boolean) => {
   if (visible) {
@@ -15,43 +16,66 @@ export const clearTerminal = () => {
 }
 
 
-/**
- * Runs a child process and proxies its output.
- * @param {string} pathToExecutable - Relative or absolute path to the executable script
- * @param {array} [proxyArguments=process.argv.slice(2)] - Arguments to pass to the child process (default: process arguments)
- * @returns {Promise<number|null>} - Exit code of the child process
- */
-export const proxyChildProcess = (pathToExecutable: string, proxyArguments: string[] = argv.slice(2)) => {
+interface ProxyOptions {
+  sea?: boolean
+  env?: Record<string, string>
+  onBeforeRestart?: () => Promise<void>
+}
+
+export const proxyChildProcess = (
+  pathToExecutable: string,
+  proxyArguments: string[] = argv.slice(2),
+  options: ProxyOptions = {}
+) => {
+  const command = options.sea ? pathToExecutable : 'node'
+  const args = options.sea ? proxyArguments : [pathToExecutable, ...proxyArguments]
+  const env = options.env ? {...process.env, ...options.env} : undefined
 
   const eventEmitter = new EventEmitter()
   const createSpawnProcessPromise = () => {
-    const onError = (_error: Error) => {
+    logDebug('Lifecycle: Initializing child process spawn...')
+    const onError = (error: Error) => {
+      logDebug(`Lifecycle: Spawn failed or process encountered an error: ${error.message}`)
       eventEmitter.emit('close', 1)
     }
 
     const onClose = (code: number | null) => {
       if (code === null) {
+        logDebug('Lifecycle: Child process was terminated externally (SIGKILL/SIGTERM).')
         clearTerminal()
+      } else {
+        logDebug(`Lifecycle: Child process exited with code ${code}`)
       }
       eventEmitter.emit('close', code)
     }
 
     const onMessage = (message: string) => {
+      logDebug(`Received IPC message: ${message}`)
+
       if (message === 'restart') {
         child.off('close', onClose)
         child.kill()
-        setTimeout(() => {
+        const doRestart = async () => {
+          logDebug('Lifecycle: Child process termination signal sent. Preparing restart hooks...')
+          await options.onBeforeRestart?.()
+          logDebug('Lifecycle: Restart hooks completed. Emitting spawn event for new process.')
           eventEmitter.emit('spawn')
-        }, 10)
+        }
+        void doRestart()
       }
     }
 
-    const child = spawn('node', [pathToExecutable, ...proxyArguments], {
-      stdio: ['inherit', 'inherit', 'inherit', 'ipc'] // Proxy standard output and error to the main process, enable IPC channel
+    const child = spawn(command, args, {
+      stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+      env,
     })
       .on('close', onClose)
       .on('error', onError)
       .on('message', onMessage)
+
+    if (child.pid) {
+      logDebug(`Lifecycle: Child process successfully started (PID: ${child.pid})`)
+    }
   }
 
   eventEmitter.on('spawn', () => createSpawnProcessPromise())

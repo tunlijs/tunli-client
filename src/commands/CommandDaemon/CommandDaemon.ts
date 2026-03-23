@@ -1,6 +1,7 @@
 import {Command} from "#commander/index";
 import type {Context} from "#types/types";
 import {DaemonClient} from "#daemon/DaemonClient";
+import {dumpAndStopDaemon} from "#lib/Flow/applyUpdate";
 
 export const createCommandDaemon = (ctx: Context, _program: Command) => {
   const cmd = new Command('daemon')
@@ -42,6 +43,21 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
         }
         await DaemonClient.start()
         ctx.logger.info('Daemon started.')
+      })
+  )
+
+  cmd.addCommand(
+    new Command('reload')
+      .description('Dump active tunnels, restart daemon and restore them')
+      .action(async () => {
+        if (!await DaemonClient.isRunning()) {
+          ctx.logger.info('Daemon is not running.')
+          return
+        }
+        await dumpAndStopDaemon()
+        ctx.logger.info('Daemon stopped.')
+        await DaemonClient.start()
+        ctx.logger.info('Daemon restarted. Tunnels restored.')
       })
   )
 

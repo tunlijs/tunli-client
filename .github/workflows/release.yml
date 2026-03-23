@@ -17,9 +17,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: tunli-linux.tar.gz
+            main_asset: tunli-main-linux.tar.gz
+            launcher_asset: tunli-linux.tar.gz
           - os: macos-latest
-            asset: tunli-macos.tar.gz
+            main_asset: tunli-main-macos.tar.gz
+            launcher_asset: tunli-macos.tar.gz
 
     steps:
       - uses: actions/checkout@v4
@@ -35,10 +37,14 @@ jobs:
       - name: Build
         run: npm run build:sea
 
-      - name: Rename artifact
-        run: mv dist-sea/tunli.tar.gz dist-sea/${{ matrix.asset }}
+      - name: Rename artifacts
+        run: |
+          mv dist-sea/tunli-main.tar.gz dist-sea/${{ matrix.main_asset }}
+          mv dist-sea/tunli-launcher.tar.gz dist-sea/${{ matrix.launcher_asset }}
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist-sea/${{ matrix.asset }}
+          files: |
+            dist-sea/${{ matrix.main_asset }}
+            dist-sea/${{ matrix.launcher_asset }}

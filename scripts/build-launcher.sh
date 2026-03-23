@@ -2,19 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BINARY_NAME="tunli"
+BINARY_NAME="tunli-launcher"
 BINARY="$SCRIPT_DIR/../dist-sea/$BINARY_NAME"
 
 cd "$SCRIPT_DIR/.."
-rm -rf dist-sea
 mkdir -p dist-sea
 
-echo "→ Bundling with esbuild..."
-npx esbuild dist/sea-main.js \
+echo "→ Bundling launcher with esbuild..."
+npx esbuild dist/launcher-main.js \
   --bundle \
   --platform=node \
   --format=esm \
-  --outfile=dist/tunli-bundle.js \
+  --outfile=dist/tunli-launcher-bundle.js \
   --minify \
   --external:react-devtools-core \
   --external:fsevents \
@@ -22,19 +21,22 @@ npx esbuild dist/sea-main.js \
   --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
   --alias:react-devtools-core=node:buffer
 
-echo "→ Building SEA binary..."
-node --build-sea sea-config.json
+echo "→ Building launcher SEA binary..."
+node --build-sea sea-config-launcher.json
 
 if [[ "$(uname)" == "Darwin" ]]; then
-  echo "→ Signing binary (macOS)..."
+  echo "→ Signing launcher binary (macOS)..."
   codesign --remove-signature "$BINARY"
   codesign --sign - "$BINARY"
 fi
 
-echo "→ Packaging..."
-tar -czf "$BINARY.tar.gz" -C "$SCRIPT_DIR/../dist-sea" "$BINARY_NAME"
+echo "→ Packaging launcher..."
+# Package as 'tunli' so the extracted binary has the correct name
+cp "$BINARY" "$SCRIPT_DIR/../dist-sea/tunli"
+tar -czf "$BINARY.tar.gz" -C "$SCRIPT_DIR/../dist-sea" "tunli"
+rm "$SCRIPT_DIR/../dist-sea/tunli"
 
 echo ""
-echo "✓ Binary ready: bin/$BINARY_NAME"
+echo "✓ Launcher ready: dist-sea/$BINARY_NAME"
 echo "  Size binary: $(du -sh "$BINARY" | cut -f1)"
 echo "  Size packed: $(du -sh "$BINARY.tar.gz" | cut -f1)"

@@ -1,6 +1,6 @@
 {
-  "main": "dist/tunli-bundle.js",
-  "output": "dist-sea/tunli",
+  "main": "dist/tunli-main-bundle.js",
+  "output": "dist-sea/tunli-main",
   "mainFormat": "module",
   "disableExperimentalSEAWarning": true,
   "useCodeCache": false,

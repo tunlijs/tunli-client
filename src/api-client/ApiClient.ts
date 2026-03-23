@@ -110,12 +110,13 @@ export class ApiClient {
     return successResponse(response, response.data.success as boolean)
   }
 
-  async connectInfo(): Promise<ApiResult<{ socketUrl: string; capturePath: string }>> {
+  async connectInfo(): Promise<ApiResult<{ socketUrl: string; capturePath: string; connectionPoolSize: number }>> {
     const response = await this.#doGet('/connect-info')
     if (response.isError) return errorResponse(response)
     return successResponse(response, {
       socketUrl: response.data.socketUrl as string,
       capturePath: response.data.capturePath as string,
+      connectionPoolSize: response.data.connectionPoolSize as number ?? 1,
     })
   }
 }

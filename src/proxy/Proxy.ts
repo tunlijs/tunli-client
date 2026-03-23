@@ -1,9 +1,15 @@
 import http from 'http'
 import net from 'net'
-import {io} from 'socket.io-client'
+import {io, type Socket} from 'socket.io-client'
 import type {ProfileConfig} from "#types/types";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {PING_INTERVAL} from "#lib/defs";
+
+interface TunnelRequestMeta {
+  method: string
+  headers: Record<string, string>
+  path: string
+}
 
 export const createProxy = async (
   config: ProfileConfig,
@@ -15,8 +21,7 @@ export const createProxy = async (
 
   if (connectInfoResult.error) throw connectInfoResult.error
 
-  const TUNNEL_HOST = connectInfoResult.data.socketUrl
-  const TUNNEL_SOCKET_PATH = connectInfoResult.data.capturePath
+  const {socketUrl: TUNNEL_HOST, capturePath: TUNNEL_SOCKET_PATH, connectionPoolSize} = connectInfoResult.data
 
   const token = config.serverConfig.authToken
 
@@ -26,7 +31,7 @@ export const createProxy = async (
     target: config.target,
   })
 
-  const socket = io(TUNNEL_HOST, {
+  const createSocket = (): Socket => io(TUNNEL_HOST, {
     path: TUNNEL_SOCKET_PATH,
     auth: {token},
     extraHeaders: {
@@ -34,118 +39,134 @@ export const createProxy = async (
     },
   })
 
+  let connectedCount = 0
   let pingInterval: ReturnType<typeof setInterval> | undefined
+  let pingSocket: Socket | undefined
 
   const ping = () => {
+    if (!pingSocket) return
     const start = Date.now()
-    socket.volatile.emit('ping', () => appEventEmitter.emit('latency', Date.now() - start))
+    pingSocket.volatile.emit('ping', () => appEventEmitter.emit('latency', Date.now() - start))
   }
 
-  socket.on('connect', () => {
-    appEventEmitter.emit('connect')
-    ping()
-    pingInterval = setInterval(ping, PING_INTERVAL)
-  })
-  socket.on('disconnect', (r) => {
-    clearInterval(pingInterval)
-    appEventEmitter.emit('disconnect', r)
-  })
-  socket.on('connect_error', (e) => appEventEmitter.emit('connect_error', e))
+  const sockets = Array.from({length: connectionPoolSize}, createSocket)
 
-  interface TunnelRequestMeta {
-    method: string
-    headers: Record<string, string>
-    path: string
-  }
-
-  socket.on('request', (requestId: string, meta: TunnelRequestMeta) => {
-    const isUpgrade = meta.headers['upgrade']?.toLowerCase() === 'websocket'
-
-    appEventEmitter.emit('request', {
-      isUpgrade,
-      requestId,
-      ...meta,
+  for (const socket of sockets) {
+    socket.on('connect', () => {
+      connectedCount++
+      if (connectedCount === 1) {
+        pingSocket = socket
+        appEventEmitter.emit('connect')
+        ping()
+        pingInterval = setInterval(ping, PING_INTERVAL)
+      }
     })
 
-    if (isUpgrade) {
-      forwardUpgrade(requestId, meta)
-      return
-    }
+    socket.on('disconnect', (r) => {
+      if (pingSocket === socket) {
+        pingSocket = sockets.find(s => s.connected && s !== socket)
+        if (!pingSocket) {
+          clearInterval(pingInterval)
+          pingInterval = undefined
+        }
+      }
+      connectedCount--
+      if (connectedCount === 0) {
+        appEventEmitter.emit('disconnect', r)
+      }
+    })
 
-    const bodyChunks: Buffer[] = []
+    socket.on('connect_error', (e) => appEventEmitter.emit('connect_error', e))
 
-    const onPipe = (id: string, chunk: Buffer) => {
-      if (id === requestId) bodyChunks.push(Buffer.from(chunk))
-    }
-    const onPipeError = (id: string, _err: string) => {
-      if (id === requestId) cleanup()
-    }
-    const onPipeEnd = (id: string) => {
-      if (id !== requestId) return
-      cleanup()
-      forward()
-    }
+    socket.on('request', (requestId: string, meta: TunnelRequestMeta) => {
+      const isUpgrade = meta.headers['upgrade']?.toLowerCase() === 'websocket'
 
-    const cleanup = () => {
-      socket.off('request-pipe', onPipe)
-      socket.off('request-pipe-end', onPipeEnd)
-      socket.off('request-pipe-error', onPipeError)
-    }
+      appEventEmitter.emit('request', {
+        isUpgrade,
+        requestId,
+        ...meta,
+      })
 
-    socket.on('request-pipe', onPipe)
-    socket.on('request-pipe-end', onPipeEnd)
-    socket.on('request-pipe-error', onPipeError)
+      if (isUpgrade) {
+        forwardUpgrade(socket, requestId, meta)
+        return
+      }
 
-    const forward = () => {
-      const localReq = http.request(
-        {
-          host: config.target.host,
-          port: config.target.port,
-          method: meta.method,
-          path: meta.path,
-          headers: meta.headers
-        },
-        (localRes) => {
-          socket.emit('response', requestId, {
-            statusCode: localRes.statusCode,
-            statusMessage: localRes.statusMessage,
-            headers: localRes.headers,
-            httpVersion: localRes.httpVersion,
-          })
-          appEventEmitter.emit('response', {
-              host: config.target.host,
-              port: config.target.port,
-              method: meta.method,
-              path: meta.path,
-              headers: meta.headers,
-              requestId: requestId
-            },
-            {
-              statusCode: localRes.statusCode ?? 200,
-              statusMessage: localRes.statusMessage ?? 'OK',
+      const bodyChunks: Buffer[] = []
+
+      const onPipe = (id: string, chunk: Buffer) => {
+        if (id === requestId) bodyChunks.push(Buffer.from(chunk))
+      }
+      const onPipeError = (id: string, _err: string) => {
+        if (id === requestId) cleanup()
+      }
+      const onPipeEnd = (id: string) => {
+        if (id !== requestId) return
+        cleanup()
+        forward()
+      }
+
+      const cleanup = () => {
+        socket.off('request-pipe', onPipe)
+        socket.off('request-pipe-end', onPipeEnd)
+        socket.off('request-pipe-error', onPipeError)
+      }
+
+      socket.on('request-pipe', onPipe)
+      socket.on('request-pipe-end', onPipeEnd)
+      socket.on('request-pipe-error', onPipeError)
+
+      const forward = () => {
+        const localReq = http.request(
+          {
+            host: config.target.host,
+            port: config.target.port,
+            method: meta.method,
+            path: meta.path,
+            headers: meta.headers
+          },
+          (localRes) => {
+            socket.emit('response', requestId, {
+              statusCode: localRes.statusCode,
+              statusMessage: localRes.statusMessage,
               headers: localRes.headers,
               httpVersion: localRes.httpVersion,
             })
-          localRes.on('data', (chunk: Buffer) => socket.emit('response-pipe', requestId, chunk))
-          localRes.on('end', () => socket.emit('response-pipe-end', requestId))
-          localRes.on('error', (e: Error) => socket.emit('response-pipe-error', requestId, e.message))
-        },
-      )
+            appEventEmitter.emit('response', {
+                host: config.target.host,
+                port: config.target.port,
+                method: meta.method,
+                path: meta.path,
+                headers: meta.headers,
+                requestId: requestId
+              },
+              {
+                statusCode: localRes.statusCode ?? 200,
+                statusMessage: localRes.statusMessage ?? 'OK',
+                headers: localRes.headers,
+                httpVersion: localRes.httpVersion,
+              })
+            localRes.on('data', (chunk: Buffer) => socket.emit('response-pipe', requestId, chunk))
+            localRes.on('end', () => socket.emit('response-pipe-end', requestId))
+            localRes.on('error', (e: Error) => socket.emit('response-pipe-error', requestId, e.message))
+          },
+        )
 
-      localReq.on('error', (e: Error) => {
-        appEventEmitter.emit('request-error', e, {
-          isUpgrade: false,
-          requestId
+        localReq.on('error', (e: Error) => {
+          appEventEmitter.emit('request-error', e, {
+            isUpgrade: false,
+            requestId
+          })
+          socket.emit('request-error', requestId, e.message)
         })
-        socket.emit('request-error', requestId, e.message)
-      })
 
-      if (bodyChunks.length) localReq.write(Buffer.concat(bodyChunks))
-      localReq.end()
-    }
-  })
+        if (bodyChunks.length) localReq.write(Buffer.concat(bodyChunks))
+        localReq.end()
+      }
+    })
+  }
 
-  function forwardUpgrade(requestId: string, meta: TunnelRequestMeta) {
+  function forwardUpgrade(socket: Socket, requestId: string, meta: TunnelRequestMeta) {
     const tcpSocket = net.connect(config.target.port, config.target.host)
 
     tcpSocket.once('connect', () => {
@@ -213,5 +234,5 @@ export const createProxy = async (
     tcpSocket.once('close', () => socket.off('request-pipe', onPipe))
   }
 
-  return {disconnect: () => socket.disconnect()}
+  return {disconnect: () => sockets.forEach(s => s.disconnect())}
 }

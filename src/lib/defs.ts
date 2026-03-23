@@ -4,10 +4,11 @@ import {existsSync} from "fs";
 
 export const PING_INTERVAL = 5000
 
-export const CHECK_FOR_UPDATES = false
+export const CHECK_FOR_UPDATES = true
 
 export const DEFAULT_API_SERVER_URL = 'https://api.tunli.app'
 
+export const RELEASE_DOWNLOAD_BASE_URL = 'https://github.com/tunlijs/tunli-client/releases/latest/download'
 
 export const CONFIG_DIR_NAME = '.tunli'
 
@@ -38,3 +39,8 @@ export const LOCAL_CONFIG_LOOKUP_FILES = (() => {
 export const FOUND_LOCAL_CONFIG_FILEPATH = LOCAL_CONFIG_LOOKUP_FILES.find(file => existsSync(file))
 
 export const DAEMON_SOCKET_PATH = resolve(GLOBAL_CONFIG_DIR, 'daemon.sock')
+
+export const TUNLI_BIN_DIR = resolve(GLOBAL_CONFIG_DIR, 'bin')
+export const TUNLI_BIN_PATH = resolve(TUNLI_BIN_DIR, 'tunli-main')
+export const TUNLI_BIN_NEW_PATH = resolve(TUNLI_BIN_DIR, 'tunli-main.update')
+export const RESTART_DUMP_FILEPATH = resolve(GLOBAL_CONFIG_DIR, 'dump.json')

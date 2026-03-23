@@ -6,7 +6,6 @@ import {isSea} from 'node:sea'
 import {DAEMON_SOCKET_PATH} from '#lib/defs'
 import type {DaemonRequest, DaemonResponse, TunnelInfo} from '#daemon/protocol'
 import type {AppEventEmitter} from '#cli-app/AppEventEmitter'
-import {logInfo} from "#logger/logger";
 
 // Resolves daemon-main.ts (dev) or daemon-main.js (production) relative to this file.
 // src/daemon/DaemonClient.ts → src/daemon-main.ts  (one level up)
@@ -93,7 +92,6 @@ export class DaemonClient {
           const line = buffer.slice(0, nl)
           buffer = buffer.slice(nl + 1)
           try {
-            logInfo(line)
             const msg = JSON.parse(line) as DaemonResponse
             if (msg.type === 'attach-ok') {
               resolve({status: msg.status, requestCount: msg.requestCount, ...(msg.lastLatency !== undefined && {lastLatency: msg.lastLatency})});

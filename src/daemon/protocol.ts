@@ -23,11 +23,14 @@ export type StartRequest = {
   deniedCidr: string[]
 }
 
+export type TunnelDump = Omit<StartRequest, 'type'>[]
+
 export type DaemonRequest =
   | StartRequest
   | { type: 'stop'; profileName: string }
   | { type: 'attach'; profileName: string }
   | { type: 'list' }
+  | { type: 'dump' }
   | { type: 'shutdown' }
 
 // Event messages streamed over an attach connection (daemon → CLI).
@@ -47,6 +50,7 @@ export type DaemonResponse =
   | { type: 'started'; profileName: string; proxyURL: string }
   | { type: 'stopped'; profileName: string }
   | { type: 'list'; tunnels: TunnelInfo[] }
+  | { type: 'dump'; tunnels: TunnelDump }
   | { type: 'attach-ok'; profileName: string; proxyURL: string; status: TunnelInfo['status']; lastLatency?: number; requestCount: number }
   | EventMessage
   | { type: 'error'; message: string }

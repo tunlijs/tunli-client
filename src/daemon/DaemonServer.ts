@@ -1,7 +1,7 @@
 import net from 'net'
-import {unlinkSync} from 'fs'
-import {DAEMON_SOCKET_PATH} from '#lib/defs'
-import type {DaemonRequest, DaemonResponse, EventMessage, StartRequest, TunnelInfo} from '#daemon/protocol'
+import {readFileSync, unlinkSync} from 'node:fs'
+import {DAEMON_SOCKET_PATH, RESTART_DUMP_FILEPATH} from '#lib/defs'
+import type {DaemonRequest, DaemonResponse, EventMessage, StartRequest, TunnelDump, TunnelInfo} from '#daemon/protocol'
 import type {Logger, ProfileConfig, TargetConfig} from '#types/types'
 import {AppEventEmitter, type Req, type ReqErrorMeta, type ReqMeta, type Res} from '#cli-app/AppEventEmitter'
 import {ApiClient} from '#api-client/ApiClient'
@@ -10,6 +10,7 @@ import {createProxy} from '#proxy/Proxy'
 
 type TunnelHandle = {
   info: TunnelInfo
+  startRequest: Omit<StartRequest, 'type'>
   appEmitter: AppEventEmitter
   disconnect: () => void
   lastLatency?: number
@@ -52,6 +53,7 @@ export class DaemonServer {
 
     await new Promise<void>((resolve) => this.#server!.listen(DAEMON_SOCKET_PATH, resolve))
     this.#logger.info('Daemon listening')
+    await this.#restoreFromDump()
 
     process.on('SIGTERM', () => this.#shutdown())
     process.on('SIGINT', () => this.#shutdown())
@@ -67,6 +69,8 @@ export class DaemonServer {
         return this.#handleAttach(req, socket)
       case 'list':
         return this.#handleList(socket)
+      case 'dump':
+        return this.#handleDump(socket)
       case 'shutdown':
         this.#respond(socket, {type: 'ok'});
         this.#shutdown();
@@ -78,7 +82,15 @@ export class DaemonServer {
     if (this.#tunnels.has(req.profileName)) {
       return this.#respond(socket, {type: 'error', message: `Tunnel "${req.profileName}" is already running`})
     }
+    try {
+      await this.#startTunnel(req)
+      this.#respond(socket, {type: 'started', profileName: req.profileName, proxyURL: req.proxyURL})
+    } catch (e) {
+      this.#respond(socket, {type: 'error', message: e instanceof Error ? e.message : String(e)})
+    }
+  }
 
+  async #startTunnel(req: Omit<StartRequest, 'type'>): Promise<void> {
     const serverConfig = {url: req.serverUrl, authToken: req.authToken}
     const apiClient = this.#apiClient.withServer(serverConfig)
 
@@ -101,36 +113,38 @@ export class DaemonServer {
     }
 
     const appEmitter = new AppEventEmitter()
-    const handle: TunnelHandle = {
-      info, appEmitter, disconnect: () => {
-      }, requestCount: 0
-    }
+    const handle: TunnelHandle = {info, startRequest: req, appEmitter, disconnect: () => {}, requestCount: 0}
 
-    appEmitter.on('connect', () => {
-      info.status = 'connected'
-    })
-    appEmitter.on('disconnect', () => {
-      info.status = 'disconnected'
-    })
-    appEmitter.on('connect_error', () => {
-      info.status = 'error'
-    })
-    appEmitter.on('latency', (ms) => {
-      handle.lastLatency = ms
-    })
-    appEmitter.on('response', () => {
-      handle.requestCount++
-    })
+    appEmitter.on('connect', () => { info.status = 'connected' })
+    appEmitter.on('disconnect', () => { info.status = 'disconnected' })
+    appEmitter.on('connect_error', () => { info.status = 'error' })
+    appEmitter.on('latency', (ms) => { handle.lastLatency = ms })
+    appEmitter.on('response', () => { handle.requestCount++ })
 
+    const proxy = await createProxy(profileConfig, appEmitter)
+    handle.disconnect = proxy.disconnect
+    this.#tunnels.set(req.profileName, handle)
+    this.#logger.info(`Tunnel started: ${req.profileName} → ${req.proxyURL}`)
+  }
+
+  async #restoreFromDump(): Promise<void> {
+    let data: string
     try {
-      const proxy = await createProxy(profileConfig, appEmitter)
-      handle.disconnect = proxy.disconnect
-      this.#tunnels.set(req.profileName, handle)
-      this.#logger.info(`Tunnel started: ${req.profileName} → ${req.proxyURL}`)
-      this.#respond(socket, {type: 'started', profileName: req.profileName, proxyURL: req.proxyURL})
+      data = readFileSync(RESTART_DUMP_FILEPATH, 'utf-8')
+      unlinkSync(RESTART_DUMP_FILEPATH)
+    } catch {
+      return
+    }
+    try {
+      const tunnels = JSON.parse(data) as TunnelDump
+      for (const tunnel of tunnels) {
+        await this.#startTunnel(tunnel).catch(e => {
+          this.#logger.error(`Failed to restore tunnel "${tunnel.profileName}": ${e instanceof Error ? e.message : String(e)}`)
+        })
+      }
+      this.#logger.info(`Restored ${tunnels.length} tunnel(s) from dump`)
     } catch (e) {
-      this.#logger.error(`Failed to start tunnel "${req.profileName}": ${e instanceof Error ? e.message : String(e)}`)
-      this.#respond(socket, {type: 'error', message: e instanceof Error ? e.message : String(e)})
+      this.#logger.error(`Failed to parse restart dump: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -194,6 +208,11 @@ export class DaemonServer {
   #handleList(socket: net.Socket): void {
     const tunnels = [...this.#tunnels.values()].map(h => h.info)
     this.#respond(socket, {type: 'list', tunnels})
+  }
+
+  #handleDump(socket: net.Socket): void {
+    const tunnels = [...this.#tunnels.values()].map(h => h.startRequest)
+    this.#respond(socket, {type: 'dump', tunnels})
   }
 
   #respond(socket: net.Socket, response: DaemonResponse): void {

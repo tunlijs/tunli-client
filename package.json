@@ -9,7 +9,9 @@
   "scripts": {
     "prepublishOnly": "npm test",
     "build": "npm run clean && tsc",
-    "build:sea": "npm run clean && tsc && scripts/build-sea.sh",
+    "build:sea": "npm run clean && tsc && scripts/build-main.sh && scripts/build-launcher.sh",
+    "build:main": "npm run clean && tsc && scripts/build-main.sh",
+    "build:launcher": "npm run clean && tsc && scripts/build-launcher.sh",
     "clean": "rm -rf dist",
     "test": "npm run build && node --test",
     "test:coverage": "npm run build && node --test --experimental-test-coverage --test-coverage-exclude='test/**'",
@@ -33,6 +35,7 @@
     "bin/",
     "dist/",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "type": "module",
@@ -67,7 +70,6 @@
     "url": "https://github.com/tunlijs/tunli-client/issues"
   },
   "license": "GPL-3.0",
-  "readme": "README.md",
   "engines": {
     "node": ">=22"
   }

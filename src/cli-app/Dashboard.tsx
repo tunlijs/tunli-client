@@ -135,6 +135,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
 
   useInput((input, key) => {
     if (key.ctrl && input === 'r') {
+      setAvailableUpdate(chalk.yellow('Restarting...'))
       process.send?.('restart')
     }
     if (key.ctrl && input === 'q') {
@@ -145,12 +146,16 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
     if (key.ctrl && input === 'u' && latestVersion && !updatingPackage && packageJson) {
       setUpdatingPackage(true)
       setAvailableUpdate(chalk.yellow('Updating...'))
-      performUpdate(packageJson.name, (success) => {
+      void performUpdate(packageJson.name, (result) => {
+        if (result.status === 'progress') {
+          setAvailableUpdate(chalk.yellow(result.message))
+          return
+        }
         setUpdatingPackage(false)
-        if (success) {
+        if (result.status === 'success') {
           setAvailableUpdate(chalk.green('Update done. Please restart tunli. (Ctrl+R to restart)'))
         } else {
-          setAvailableUpdate(chalk.red('Update failed.'))
+          setAvailableUpdate(chalk.red(`Update failed: ${result.reason}`))
         }
       })
     }

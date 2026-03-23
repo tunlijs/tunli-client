@@ -22,7 +22,9 @@ Or download manually from the [releases page](https://github.com/tunlijs/tunli-c
 npm install -g tunli
 ```
 
-Requires Node.js >= 18.
+Requires Node.js >= 22.
+
+> **Note:** The CLI command interface is not yet final. Some commands and flags may be renamed or restructured in v0.2.0 for consistency. See the [Roadmap](ROADMAP.md) for planned changes.
 
 ## Features
 
@@ -116,6 +118,7 @@ Manage the background daemon process. The daemon is also started automatically w
 tunli daemon start
 tunli daemon stop
 tunli daemon restart
+tunli daemon reload    # dump active tunnels, restart daemon, restore them
 tunli daemon status
 ```
 
@@ -179,6 +182,14 @@ tunli profile use staging       # set staging as the default profile
 tunli profile delete staging    # remove a profile
 ```
 
+### `tunli update`
+
+Download and apply the latest binary release.
+
+```bash
+tunli update
+```
+
 ### `tunli relay`
 
 Manage relay servers.
@@ -187,6 +198,10 @@ Manage relay servers.
 tunli relay list
 tunli relay use myserver        # switch the active relay server
 ```
+
+## Architecture & internals
+
+For a deeper look at the two-binary model, daemon protocol, update flow and build system see [docs/architecture.md](docs/architecture.md).
 
 ## Architecture
 

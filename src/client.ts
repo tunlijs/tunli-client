@@ -19,6 +19,7 @@ import {createCommandDashboard} from "#commands/CommandDashboard/CommandDashboar
 import {createCommandLogs} from "#commands/CommandLogs/CommandLogs";
 import {createCommandStop} from "#commands/CommandStop/CommandStop";
 import {createCommandRestart} from "#commands/CommandRestart/CommandRestart";
+import {createCommandUpdate} from "#commands/CommandUpdate/CommandUpdate";
 import {ApiClient} from "#api-client/ApiClient";
 import {readPackageJson} from "#package-json/packageJson";
 
@@ -63,6 +64,7 @@ program.addCommand(createCommandDashboard(ctx, program))
 program.addCommand(createCommandLogs(ctx, program))
 program.addCommand(createCommandStop(ctx, program))
 program.addCommand(createCommandRestart(ctx, program))
+program.addCommand(createCommandUpdate(ctx, program))
 
 program.action(({options}: ParseResult) => {
   if (options.version) {
