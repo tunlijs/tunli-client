@@ -1,10 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-03-24
 
 ### Dashboard
-- Request runtime displayed per log entry, color-coded (green <100ms, yellow <500ms, red ≥500ms)
+- Request runtime per log entry, color-coded (green <100ms, yellow <500ms, red ≥500ms)
 - Path and status columns dynamically sized to longest entry
+- Pause access log with Ctrl+P — new entries are buffered and flushed on resume
+- Keyboard navigation through log entries (↑↓), Enter opens detail view, Esc exits
+- Detail modal: request/response headers, status, duration, timestamp
 - `dev:dashboard` script for UI development with simulated fake data (`npm run dev:dashboard`)
 
 ## [0.1.0] - 2026-03-23

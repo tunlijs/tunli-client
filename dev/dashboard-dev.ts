@@ -71,20 +71,39 @@ const STATUSES: {statusCode: number; statusMessage: string}[] = [
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!
 
 let reqId = 0
-const fakeHeaders: IncomingHttpHeaders = {'content-type': 'application/json', 'user-agent': 'curl/8.0'}
+const fakeReqHeaders: IncomingHttpHeaders = {
+  'content-type': 'application/json',
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+  'accept': 'application/json, text/plain, */*',
+  'accept-encoding': 'gzip, deflate, br',
+  'accept-language': 'de-DE,de;q=0.9,en-US;q=0.8',
+  'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake',
+  'x-request-id': 'will-be-overwritten',
+}
+
+const fakeResHeaders: IncomingHttpHeaders = {
+  'content-type': 'application/json; charset=utf-8',
+  'cache-control': 'no-cache, no-store, must-revalidate',
+  'x-powered-by': 'Express',
+  'x-response-time': '12ms',
+  'vary': 'Accept-Encoding',
+  'access-control-allow-origin': '*',
+}
 
 const sendFakeRequest = () => {
   const id = `req-${reqId++}`
   const method = pick(METHODS)
   const path = pick(PATHS)
   const status = pick(STATUSES)
+  const reqHeaders = {...fakeReqHeaders, 'x-request-id': id}
 
-  emitter.emit('request', {method, path, headers: fakeHeaders, requestId: id, isUpgrade: false})
+  emitter.emit('request', {method, path, headers: reqHeaders, requestId: id, isUpgrade: false})
 
   setTimeout(() => {
+    const resHeaders = {...fakeResHeaders, 'x-response-time': `${Math.floor(Math.random() * 200 + 5)}ms`}
     emitter.emit('response',
-      {host: 'localhost', port: 8080, method, path, headers: fakeHeaders, requestId: id},
-      {statusCode: status.statusCode, statusMessage: status.statusMessage, httpVersion: '1.1', headers: {}},
+      {host: 'localhost', port: 8080, method, path, headers: reqHeaders, requestId: id},
+      {statusCode: status.statusCode, statusMessage: status.statusMessage, httpVersion: '1.1', headers: resHeaders},
     )
   }, Math.random() * 200 + 20)
 }

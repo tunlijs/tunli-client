@@ -1,9 +1,9 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {Box, render, Text, useApp, useInput, useStdout} from 'ink'
 import chalk from 'chalk'
 import QRCode from 'qrcode'
 import type {ProfileConfig} from '#types/types'
-import type {AppEventEmitter} from '#cli-app/AppEventEmitter'
+import type {AppEventEmitter, Req, Res} from '#cli-app/AppEventEmitter'
 import {readPackageJson} from '#package-json/packageJson'
 import {setCursorVisibility} from '#utils/cliFunctions'
 import {getAvailableUpdate, performUpdate} from '#cli-app/versionCheck'
@@ -13,9 +13,13 @@ type LogEntry = {
   method: string
   path: string
   status: string
-  id: number
   runtime: string | undefined
+  id: number
+  req: Req
+  res: Res
 }
+
+const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '')
 
 const SPINNER_CHARS = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'] as const
 
@@ -55,6 +59,59 @@ const QRModal = ({text, onClose}: { text: string, onClose: () => void }) => {
   )
 }
 
+const DetailModal = ({entry, onClose}: { entry: LogEntry, onClose: () => void }) => {
+  const {stdout} = useStdout()
+
+  useInput((input, key) => {
+    if (key.escape || input === 'q') onClose()
+  })
+
+  const reqHeaders = Object.entries(entry.req.headers)
+  const resHeaders = Object.entries(entry.res.headers)
+
+  return (
+    <Box width="100%" height={stdout.rows} flexDirection="column" alignItems="center" justifyContent="center">
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1} width={Math.min(stdout.columns - 4, 100)}>
+        <Box justifyContent="space-between">
+          <Text bold>{entry.method} {entry.path}</Text>
+          <Text dimColor>q / Esc to close</Text>
+        </Box>
+        <Box marginTop={1} gap={4}>
+          <Text>{entry.status}</Text>
+          {entry.runtime ? <Box><Text dimColor>Duration  </Text><Text>{entry.runtime}</Text></Box> : null}
+          <Box><Text dimColor>Time  </Text><Text>{new Date(entry.id).toLocaleTimeString()}</Text></Box>
+        </Box>
+
+        <Text> </Text>
+        <Text bold>Request Headers</Text>
+        <Text>{'─'.repeat(40)}</Text>
+        {reqHeaders.length === 0
+          ? <Text dimColor>—</Text>
+          : reqHeaders.map(([k, v]) => (
+            <Box key={k}>
+              <Box minWidth={30}><Text color="cyan">{k}</Text></Box>
+              <Text>{String(v)}</Text>
+            </Box>
+          ))
+        }
+
+        <Text> </Text>
+        <Text bold>Response Headers</Text>
+        <Text>{'─'.repeat(40)}</Text>
+        {resHeaders.length === 0
+          ? <Text dimColor>—</Text>
+          : resHeaders.map(([k, v]) => (
+            <Box key={k}>
+              <Box minWidth={30}><Text color="cyan">{k}</Text></Box>
+              <Text>{String(v)}</Text>
+            </Box>
+          ))
+        }
+      </Box>
+    </Box>
+  )
+}
+
 type DashboardAppProps = {
   config: ProfileConfig
   appEventEmitter: AppEventEmitter
@@ -76,6 +133,14 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
   const [accessLog, setAccessLog] = useState<LogEntry[]>([])
   const [qrText, setQrText] = useState<string | null>(null)
   const [latency, setLatency] = useState<number | null>(null)
+  const [paused, setPaused] = useState(false)
+  const [cursorIndex, setCursorIndex] = useState<number | null>(null)
+  const [detailEntry, setDetailEntry] = useState<LogEntry | null>(null)
+
+  const runtimeStack = useRef(new Map<string, number>())
+  const pendingLog = useRef<LogEntry[]>([])
+  const accessLogRef = useRef<LogEntry[]>([])
+  const pausedRef = useRef(false)
 
   const forwardingUrl = `${config.proxy.proxyURL} -> http://${config.target.host}:${config.target.port}/`
 
@@ -89,8 +154,6 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
       }
     })
   }, [])
-
-  const runtimeStack = new Map<string, number>()
 
   useEffect(() => {
     appEventEmitter
@@ -107,12 +170,12 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
         setConnectionStatus(`${chalk.bold(chalk.red('error'))} - ${e.message}`)
       })
       .on('request', (req) => {
-        runtimeStack.set(req.requestId, Date.now())
+        runtimeStack.current.set(req.requestId, Date.now())
       })
       .on('response', (req, res) => {
         const now = Date.now()
-        const startTime = runtimeStack.get(req.requestId)
-        runtimeStack.delete(req.requestId)
+        const startTime = runtimeStack.current.get(req.requestId)
+        runtimeStack.current.delete(req.requestId)
         const runtimeMs = startTime !== undefined ? now - startTime : undefined
 
         let rspMsg = `${res.statusCode} ${res.statusMessage}`
@@ -120,7 +183,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
         else if (res.statusCode >= 400) rspMsg = chalk.blueBright(rspMsg)
         else rspMsg = chalk.green(rspMsg)
         rspMsg = chalk.bold(rspMsg)
-        setRequestCount(c => c + 1)
+
         let runtime: string | undefined
         if (runtimeMs !== undefined) {
           const label = `${runtimeMs}ms`
@@ -129,13 +192,19 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
               : chalk.red(label)
         }
 
-        setAccessLog(log => [...log, {
-          method: req.method,
-          path: req.path,
-          status: rspMsg,
-          runtime,
-          id: now
-        }].slice(-30))
+        const entry: LogEntry = {method: req.method, path: req.path, status: rspMsg, runtime, id: now, req, res}
+
+        setRequestCount(c => c + 1)
+
+        if (pausedRef.current) {
+          pendingLog.current.push(entry)
+        } else {
+          setAccessLog(log => {
+            const next = [...log, entry].slice(-30)
+            accessLogRef.current = next
+            return next
+          })
+        }
       })
       .on('client-blocked', (ip) => {
         setBlockedCount(c => c + 1)
@@ -145,7 +214,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
       .on('request-count', (count) => setRequestCount(count))
   }, [])
 
-  // Ctrl+C always active (even when QR modal is open)
+  // Ctrl+C always active
   useInput((input, key) => {
     if (key.ctrl && input === 'c') {
       exit()
@@ -153,6 +222,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
     }
   })
 
+  // Main key handler — inactive when any modal is open
   useInput((input, key) => {
     if (key.ctrl && input === 'r') {
       setAvailableUpdate(chalk.yellow('Restarting...'))
@@ -162,6 +232,20 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
       QRCode.toString(config.proxy.proxyURL, {type: 'terminal'}, (err, url) => {
         if (!err) setQrText(url)
       })
+    }
+    if (key.ctrl && input === 'p') {
+      const next = !pausedRef.current
+      pausedRef.current = next
+      setPaused(next)
+      if (!next) {
+        // unpause: flush buffered entries
+        setAccessLog(log => {
+          const flushed = [...log, ...pendingLog.current].slice(-30)
+          accessLogRef.current = flushed
+          pendingLog.current = []
+          return flushed
+        })
+      }
     }
     if (key.ctrl && input === 'u' && latestVersion && !updatingPackage && packageJson) {
       setUpdatingPackage(true)
@@ -179,7 +263,29 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
         }
       })
     }
-  }, {isActive: qrText === null})
+    // cursor navigation
+    if (key.upArrow) {
+      setCursorIndex(i => {
+        if (i === null) return 0
+        return Math.max(0, i - 1)
+      })
+    }
+    if (key.downArrow) {
+      setCursorIndex(i => {
+        const max = accessLogRef.current.length - 1
+        if (i === null) return 0
+        return Math.min(max, i + 1)
+      })
+    }
+    if (key.escape) {
+      setCursorIndex(null)
+    }
+    if (key.return && cursorIndex !== null) {
+      const displayed = [...accessLogRef.current].reverse()
+      const entry = displayed[cursorIndex]
+      if (entry) setDetailEntry(entry)
+    }
+  }, {isActive: qrText === null && detailEntry === null})
 
   const allowedCidr = config.allowedCidr.length ? config.allowedCidr : null
   const deniedCidr = config.deniedCidr.length ? config.deniedCidr : null
@@ -187,6 +293,14 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
   if (qrText !== null) {
     return <QRModal text={qrText} onClose={() => setQrText(null)}/>
   }
+
+  if (detailEntry !== null) {
+    return <DetailModal entry={detailEntry} onClose={() => setDetailEntry(null)}/>
+  }
+
+  const displayedLog = [...accessLog].reverse()
+  const pathColWidth = Math.max(40, ...accessLog.map(e => e.path.length + 3))
+  const statusColWidth = Math.max(20, ...accessLog.map(e => stripAnsi(e.status).length + 3))
 
   return (
     <Box flexDirection="column" height={stdout.rows}>
@@ -216,23 +330,26 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
         <InfoRow label="Connections" value={String(requestCount)}/>
       </Box>
       <Text> </Text>
-      <Text> </Text>
-      <Text>HTTP Requests</Text>
+      <Box justifyContent="space-between">
+        <Text>HTTP Requests{cursorIndex !== null ? chalk.dim('  ↑↓ navigate · Enter detail · Esc exit') : chalk.dim('  ↑↓ navigate · Ctrl+P pause')}</Text>
+        {paused ? <Text>{chalk.yellow('PAUSED')} {pendingLog.current.length > 0 ? chalk.dim(`+${pendingLog.current.length}`) : ''}</Text> : null}
+      </Box>
       <Text>{'─'.repeat(stdout.columns)}</Text>
       <Box flexDirection="column">
-        {(() => {
-          const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '')
-          const pathColWidth = Math.max(40, ...accessLog.map(e => e.path.length + 3))
-          const statusColWidth = Math.max(20, ...accessLog.map(e => stripAnsi(e.status).length + 3))
-          return [...accessLog].reverse().map(entry => (
+        {displayedLog.map((entry, i) => {
+          const selected = cursorIndex === i
+          const dim = cursorIndex !== null && !selected
+          const prefix = selected ? '›' : ' '
+          return (
             <Box key={entry.id}>
-              <Box minWidth={8}><Text>{entry.method}</Text></Box>
-              <Box minWidth={pathColWidth}><Text>{entry.path}</Text></Box>
-              <Box minWidth={statusColWidth}><Text>{entry.status}</Text></Box>
-              {entry.runtime ? <Text>{entry.runtime}</Text> : null}
+              <Box minWidth={2}><Text color="cyan">{prefix}</Text></Box>
+              <Box minWidth={8}><Text dimColor={dim}>{entry.method}</Text></Box>
+              <Box minWidth={pathColWidth}><Text dimColor={dim}>{entry.path}</Text></Box>
+              <Box minWidth={statusColWidth}><Text dimColor={dim}>{entry.status}</Text></Box>
+              {entry.runtime ? <Text dimColor={dim}>{entry.runtime}</Text> : null}
             </Box>
-          ))
-        })()}
+          )
+        })}
       </Box>
     </Box>
   )
