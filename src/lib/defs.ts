@@ -44,3 +44,6 @@ export const TUNLI_BIN_DIR = resolve(GLOBAL_CONFIG_DIR, 'bin')
 export const TUNLI_BIN_PATH = resolve(TUNLI_BIN_DIR, 'tunli-main')
 export const TUNLI_BIN_NEW_PATH = resolve(TUNLI_BIN_DIR, 'tunli-main.update')
 export const RESTART_DUMP_FILEPATH = resolve(GLOBAL_CONFIG_DIR, 'dump.json')
+
+export const IDENTITY_KEY_PATH = resolve(GLOBAL_CONFIG_DIR, 'identity.key')
+export const IDENTITY_PUB_PATH = resolve(GLOBAL_CONFIG_DIR, 'identity.pub')

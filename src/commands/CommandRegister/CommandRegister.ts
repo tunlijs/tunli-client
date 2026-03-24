@@ -1,6 +1,7 @@
 import {Command, Option, type ParseResult} from "#commander/index";
 import type {Context} from "#types/types";
 import {DEFAULT_API_SERVER_URL, DEFAULT_SERVER_NAME} from "#lib/defs";
+import {encodePublicKey, ensureIdentity, fingerprint, loadIdentity} from "#identity/identity";
 
 export const createCommandRegister = (ctx: Context, _program: Command) => {
 
@@ -48,6 +49,13 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
       .save()
 
     ctx.logger.info(`Registration successful. Relay: ${opt.relay} (${serverName})`)
+
+    const isNew = loadIdentity() === null
+    const identity = ensureIdentity()
+    if (isNew) {
+      ctx.logger.info(`Identity key generated: ${encodePublicKey(identity.publicKeyRaw)}`)
+      ctx.logger.info(`Fingerprint: ${fingerprint(identity.publicKeyRaw)}`)
+    }
   })
 
   cmd.extendUsage()

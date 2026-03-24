@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Identity
+- Ed25519 keypair generated once at `tunli register` time, stored in `~/.tunli/identity.key` (private, mode 0600) and `~/.tunli/identity.pub`
+- Public key encoded as `tunli1<base64url>` — recognisable, copy-paste-safe
+- Short fingerprint (8-char hex) for display
+- `tunli identity` — show public key and fingerprint
+- Foundation for private peer-to-peer tunnels (`tunli share` / `tunli connect`)
+
 ### `tunli http` foreground mode
 - `--foreground` — run the tunnel in the CLI process without a background daemon; exits when the process is killed
 - `--dashboard` — foreground mode with the live TUI dashboard attached
