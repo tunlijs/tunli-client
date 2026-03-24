@@ -1,4 +1,4 @@
-import {Argument, Command, type ParseResult} from "#commander/index";
+import {Argument, Command, Option, type ParseResult} from "#commander/index";
 import type {Context} from "#types/types";
 import {checkPort} from "#utils/checkFunctions";
 import {resolveConfig} from "#commands/CommandConfig/utils/resolveConfig";
@@ -6,6 +6,10 @@ import {addSharedOptions} from "#commands/CommandConfig/utils/sharedOptions";
 import type {SharedOptions} from "#commands/CommandConfig/types";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
 import {DaemonClient} from "#daemon/DaemonClient";
+import {AppEventEmitter} from "#cli-app/AppEventEmitter";
+import {createProxy} from "#proxy/Proxy";
+import {initDashboard} from "#cli-app/Dashboard";
+import {initLiveLog} from "#cli-app/LiveLog";
 
 export const createCommandHttp = (ctx: Context, _program: Command) => {
   const cmd = new Command('http')
@@ -14,10 +18,13 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
   addSharedOptions(cmd, 'save')
   cmd.addArgument(new Argument('port', 'Local port to forward (e.g. 3000)').required().parse(checkPort))
   cmd.addArgument(new Argument('host', 'Local host to forward to (default: localhost)'))
+  cmd.addOption(new Option('foreground', 'Run tunnel in the foreground (no daemon)'))
+  cmd.addOption(new Option('dashboard', 'Show live dashboard (implies --foreground)'))
+  cmd.addOption(new Option('logs', 'Show live log output (implies --foreground)'))
   cmd.action(async ({args, options}: ParseResult) => {
     const port = args.port as number
     const host = (args.host as string | undefined) ?? 'localhost'
-    const opts = options as Omit<SharedOptions, "profile"> & { save: string }
+    const opts = options as Omit<SharedOptions, "profile"> & { save: string; foreground: boolean; dashboard: boolean; logs: boolean }
 
     const config = resolveConfig(ctx, {
       local: opts.local === true,
@@ -30,6 +37,17 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
     const validated = await validateProfileConfig(ctx, config)
 
     if (opts.save) config.save()
+
+    if (opts.foreground || opts.dashboard || opts.logs) {
+      const appEmitter = new AppEventEmitter()
+      const proxy = await createProxy(validated, appEmitter)
+      process.once('exit', () => proxy.disconnect())
+      process.on('SIGINT', () => process.exit(0))
+      process.on('SIGTERM', () => process.exit(0))
+      if (opts.dashboard) initDashboard(validated, appEmitter)
+      else if (opts.logs) initLiveLog(validated, appEmitter)
+      return
+    }
 
     await DaemonClient.ensureRunning()
     const client = new DaemonClient()

@@ -66,6 +66,14 @@ tunli http 3000 --save myapp      # save as a named profile for later reuse
 
 Use `--save <name>` to persist the configuration as a profile. You can then start it again with `tunli use <profile>` or `tunli @<profile>`.
 
+**Foreground mode** — run the tunnel directly in the CLI process without a background daemon:
+
+```bash
+tunli http 3000 --foreground      # silent, exits when the process is killed
+tunli http 3000 --dashboard       # with live TUI dashboard
+tunli http 3000 --logs            # with live log output to stdout
+```
+
 ### `tunli use <profile>`
 
 Start a tunnel using a saved profile. Profiles are created via `tunli http --save` or managed with `tunli profile`.

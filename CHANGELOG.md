@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### `tunli http` foreground mode
+- `--foreground` — run the tunnel in the CLI process without a background daemon; exits when the process is killed
+- `--dashboard` — foreground mode with the live TUI dashboard attached
+- `--logs` — foreground mode with live log output to stdout
+
 ## [0.2.0] - 2026-03-24
 
 ### Dashboard

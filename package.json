@@ -14,7 +14,7 @@
     "build:launcher": "npm run clean && tsc && scripts/build-launcher.sh",
     "clean": "rm -rf dist",
     "dev:dashboard": "tsx --tsconfig tsconfig.json dev/dashboard-dev.ts",
-    "test": "npm run build && node --test",
+    "test": "npm run build && node --test test/**",
     "test:coverage": "npm run build && node --test --experimental-test-coverage --test-coverage-exclude='test/**'",
     "test:coverage:c8": "npm run build && npx c8 node --test",
     "test:coverage:lcov": "npm run build && npx c8 --src src node --enable-source-maps --test"
