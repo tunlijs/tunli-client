@@ -17,3 +17,7 @@
 ## 0.7.0
 
 - **Replace Socket.IO with raw WebSockets** — removes the Socket.IO dependency on both client and server; requires implementing reconnect handling, ping/latency protocol and tunnel-assignment logic from scratch. Prerequisite for a potential Go client in the future.
+
+## Unscheduled
+
+- **Local web portal** — browser-based UI for traffic inspection and tunnel status. Targets use cases that don't fit the TUI well (request/response body inspection, richer filtering, history) and makes tunli accessible to team members who don't work in the terminal. Possibly a standalone tool (`tunli-inspector` or similar) that attaches to a running daemon rather than being bundled into the main binary.
