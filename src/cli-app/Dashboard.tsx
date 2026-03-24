@@ -1,5 +1,5 @@
-import {useState, useEffect} from 'react'
-import {render, Box, Text, useInput, useApp, useStdout} from 'ink'
+import {useEffect, useState} from 'react'
+import {Box, render, Text, useApp, useInput, useStdout} from 'ink'
 import chalk from 'chalk'
 import QRCode from 'qrcode'
 import type {ProfileConfig} from '#types/types'
@@ -14,11 +14,12 @@ type LogEntry = {
   path: string
   status: string
   id: number
+  runtime: string | undefined
 }
 
 const SPINNER_CHARS = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'] as const
 
-const Spinner = ({spinning}: {spinning: boolean}) => {
+const Spinner = ({spinning}: { spinning: boolean }) => {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -30,14 +31,14 @@ const Spinner = ({spinning}: {spinning: boolean}) => {
   return <Text>{spinning ? (SPINNER_CHARS[index] ?? ' ') : ' '}</Text>
 }
 
-const InfoRow = ({label, value}: {label: string, value: string}) => (
+const InfoRow = ({label, value}: { label: string, value: string }) => (
   <Box>
     <Box minWidth={30}><Text>{label}</Text></Box>
     <Text>{value}</Text>
   </Box>
 )
 
-const QRModal = ({text, onClose}: {text: string, onClose: () => void}) => {
+const QRModal = ({text, onClose}: { text: string, onClose: () => void }) => {
   const {stdout} = useStdout()
 
   useInput((input, key) => {
@@ -89,6 +90,8 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
     })
   }, [])
 
+  const runtimeStack = new Map<string, number>()
+
   useEffect(() => {
     appEventEmitter
       .on('connect', () => {
@@ -103,18 +106,35 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
         setSpinning(true)
         setConnectionStatus(`${chalk.bold(chalk.red('error'))} - ${e.message}`)
       })
+      .on('request', (req) => {
+        runtimeStack.set(req.requestId, Date.now())
+      })
       .on('response', (req, res) => {
+        const now = Date.now()
+        const startTime = runtimeStack.get(req.requestId)
+        runtimeStack.delete(req.requestId)
+        const runtimeMs = startTime !== undefined ? now - startTime : undefined
+
         let rspMsg = `${res.statusCode} ${res.statusMessage}`
         if (res.statusCode >= 500) rspMsg = chalk.red(rspMsg)
         else if (res.statusCode >= 400) rspMsg = chalk.blueBright(rspMsg)
         else rspMsg = chalk.green(rspMsg)
         rspMsg = chalk.bold(rspMsg)
         setRequestCount(c => c + 1)
+        let runtime: string | undefined
+        if (runtimeMs !== undefined) {
+          const label = `${runtimeMs}ms`
+          runtime = runtimeMs < 100 ? chalk.green(label)
+            : runtimeMs < 500 ? chalk.yellow(label)
+              : chalk.red(label)
+        }
+
         setAccessLog(log => [...log, {
           method: req.method,
           path: req.path,
           status: rspMsg,
-          id: Date.now()
+          runtime,
+          id: now
         }].slice(-30))
       })
       .on('client-blocked', (ip) => {
@@ -165,7 +185,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
   const deniedCidr = config.deniedCidr.length ? config.deniedCidr : null
 
   if (qrText !== null) {
-    return <QRModal text={qrText} onClose={() => setQrText(null)} />
+    return <QRModal text={qrText} onClose={() => setQrText(null)}/>
   }
 
   return (
@@ -173,40 +193,46 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
       <Box width="100%" justifyContent="space-between">
         <Box>
           <Text>tunli </Text>
-          <Spinner spinning={spinning} />
+          <Spinner spinning={spinning}/>
         </Box>
         <Text>(Ctrl+C to quit)</Text>
       </Box>
       <Box marginTop={1} flexDirection="column">
-        <InfoRow label="Tunnel" value={connectionStatus} />
-        {packageJson ? <InfoRow label="Version" value={packageJson.version} /> : null}
-        {availableUpdate ? <InfoRow label={chalk.yellow('Update')} value={availableUpdate} /> : null}
-        <InfoRow label="Profile" value={config.profileName} />
-        <InfoRow label="Config" value={config.filepath} />
-        <InfoRow label="QR-Code" value="Ctrl-Q" />
+        <InfoRow label="Tunnel" value={connectionStatus}/>
+        {packageJson ? <InfoRow label="Version" value={packageJson.version}/> : null}
+        {availableUpdate ? <InfoRow label={chalk.yellow('Update')} value={availableUpdate}/> : null}
+        <InfoRow label="Profile" value={config.profileName}/>
+        <InfoRow label="Config" value={config.filepath}/>
+        <InfoRow label="QR-Code" value="Ctrl-Q"/>
         {(allowedCidr ?? deniedCidr) ? <Text> </Text> : null}
-        {allowedCidr ? <InfoRow label="Allowed" value={allowedCidr.join(', ')} /> : null}
-        {deniedCidr ? <InfoRow label="Denied" value={deniedCidr.join(', ')} /> : null}
+        {allowedCidr ? <InfoRow label="Allowed" value={allowedCidr.join(', ')}/> : null}
+        {deniedCidr ? <InfoRow label="Denied" value={deniedCidr.join(', ')}/> : null}
         {(allowedCidr ?? deniedCidr) ? (
-          <InfoRow label="Blocked" value={`${blockedCount}${lastBlockedIp ? ` (${lastBlockedIp})` : ''}`} />
+          <InfoRow label="Blocked" value={`${blockedCount}${lastBlockedIp ? ` (${lastBlockedIp})` : ''}`}/>
         ) : null}
         <Text> </Text>
-        <InfoRow label="Latency" value={latency !== null ? `${latency}ms` : '—'} />
-        <InfoRow label="Forwarding" value={forwardingUrl} />
-        <InfoRow label="Connections" value={String(requestCount)} />
+        <InfoRow label="Latency" value={latency !== null ? `${latency}ms` : '—'}/>
+        <InfoRow label="Forwarding" value={forwardingUrl}/>
+        <InfoRow label="Connections" value={String(requestCount)}/>
       </Box>
       <Text> </Text>
       <Text> </Text>
       <Text>HTTP Requests</Text>
       <Text>{'─'.repeat(stdout.columns)}</Text>
       <Box flexDirection="column">
-        {[...accessLog].reverse().map(entry => (
-          <Box key={entry.id}>
-            <Box minWidth={8}><Text>{entry.method}</Text></Box>
-            <Box minWidth={30}><Text>{entry.path}</Text></Box>
-            <Text>{entry.status}</Text>
-          </Box>
-        ))}
+        {(() => {
+          const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '')
+          const pathColWidth = Math.max(40, ...accessLog.map(e => e.path.length + 3))
+          const statusColWidth = Math.max(20, ...accessLog.map(e => stripAnsi(e.status).length + 3))
+          return [...accessLog].reverse().map(entry => (
+            <Box key={entry.id}>
+              <Box minWidth={8}><Text>{entry.method}</Text></Box>
+              <Box minWidth={pathColWidth}><Text>{entry.path}</Text></Box>
+              <Box minWidth={statusColWidth}><Text>{entry.status}</Text></Box>
+              {entry.runtime ? <Text>{entry.runtime}</Text> : null}
+            </Box>
+          ))
+        })()}
       </Box>
     </Box>
   )
@@ -223,5 +249,5 @@ export const initDashboard = (config: ProfileConfig, appEventEmitter: AppEventEm
 
   process.once('exit', restoreScreen)
 
-  render(<DashboardApp config={config} appEventEmitter={appEventEmitter} />, {exitOnCtrlC: false})
+  render(<DashboardApp config={config} appEventEmitter={appEventEmitter}/>, {exitOnCtrlC: false})
 }

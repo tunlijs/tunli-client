@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Dashboard
+- Request runtime displayed per log entry, color-coded (green <100ms, yellow <500ms, red ≥500ms)
+- Path and status columns dynamically sized to longest entry
+- `dev:dashboard` script for UI development with simulated fake data (`npm run dev:dashboard`)
+
 ## [0.1.0] - 2026-03-23
 
 Initial release after full rewrite.
