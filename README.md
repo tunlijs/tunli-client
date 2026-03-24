@@ -34,6 +34,7 @@ Requires Node.js >= 22.
 - Profiles & environments
 - Self-hosted relay servers
 - CIDR allow/deny access control
+- Private peer-to-peer tunnels (`tunli share` / `tunli connect`) — no public URL, access by key only
 
 ## Quick Start
 
@@ -188,6 +189,36 @@ Manage tunnel profiles.
 tunli profile list
 tunli profile use staging       # set staging as the default profile
 tunli profile delete staging    # remove a profile
+```
+
+### `tunli identity`
+
+Show your tunli identity (public key and fingerprint). The keypair is generated automatically on first `tunli register`.
+
+```bash
+tunli identity
+```
+
+### `tunli share <port> [host]`
+
+Share a local port privately via a peer-to-peer tunnel. No public URL is created — only someone with your public key can connect.
+
+```bash
+tunli share 8080
+# → Your public key: tunli1abc...
+# → Share this: tunli connect tunli1abc...
+```
+
+### `tunli connect <pubkey>`
+
+Connect to a remote share by the host's public key. Opens a local TCP port that proxies to the remote service.
+
+```bash
+tunli connect tunli1abc...
+# → Connected. Service available at localhost:52416
+# → For SSH: ssh -p 52416 user@localhost
+
+tunli connect tunli1abc... --port 2222   # fixed local port
 ```
 
 ### `tunli update`

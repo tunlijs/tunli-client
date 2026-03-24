@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-03-24
+
+### Share / Connect (private peer-to-peer tunnels)
+- `tunli share <port>` — share a local port privately; outputs a public key for the other party
+- `tunli connect <pubkey>` — connect to a remote share, opens a local TCP port (random or `--port`)
+- Connecting client's public key shown on host side at connect/disconnect
+- `docs/share-relay-spec.md` — relay server implementation spec (Socket.IO `/share` namespace)
 
 ### Identity
 - Ed25519 keypair generated once at `tunli register` time, stored in `~/.tunli/identity.key` (private, mode 0600) and `~/.tunli/identity.pub`
