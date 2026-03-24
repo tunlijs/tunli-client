@@ -3,6 +3,10 @@
 // The daemon is distinguished at runtime via the TUNLI_DAEMON env var.
 // This binary is spawned and supervised by the launcher (launcher-main.ts).
 
+// Suppress DEP0169 (url.parse) — emitted by socket.io-client / engine.io-client internals,
+// not actionable from userland.
+process.on('warning', (w: Error & {code?: string}) => { if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`) })
+
 if (process.env.TUNLI_DAEMON === '1') {
   await import('./daemon-main.js')
 } else {
