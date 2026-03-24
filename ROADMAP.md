@@ -20,4 +20,8 @@
 
 ## Unscheduled
 
+- **Private peer-to-peer tunnels** — secure sharing between two tunli instances without a public URL. `tunli share <port>` exposes a local service privately; `tunli connect <key>` makes it available locally on the other side. Access controlled via persistent identity keypairs: the relay only brokers the connection after verifying both parties, it never inspects traffic. Authorization model: TOFU (first connect shows up in dashboard for approval) + persistent allowlist. Self-hosters benefit too — relay operator sees nothing.
+
+- **TCP tunneling** — generic raw TCP forwarding over WebSocket (port 443), enabling SSH, PostgreSQL, Redis and other non-HTTP protocols. `tunli tcp 22` registers a TCP tunnel; `tunli tcp-proxy <host> <port>` acts as an SSH `ProxyCommand`. A one-time `~/.ssh/config` entry (`ProxyCommand tunli tcp-proxy %h %p`) makes `ssh user@bar.tunli.app -p443` work transparently. Requires a new binary-stream WebSocket path on the relay server.
+
 - **Local web portal** — browser-based UI for traffic inspection and tunnel status. Targets use cases that don't fit the TUI well (request/response body inspection, richer filtering, history) and makes tunli accessible to team members who don't work in the terminal. Possibly a standalone tool (`tunli-inspector` or similar) that attaches to a running daemon rather than being bundled into the main binary.
