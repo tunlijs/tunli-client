@@ -69,7 +69,9 @@ export const createCommandStartProfile = (ctx: Context, _program: Command) => {
     }
 
     if (result.type === 'started') {
-      ctx.logger.info(`Tunnel started: ${result.proxyURL}`)
+      const targetUrl = `${validated.target.protocol}://${validated.target.host}:${validated.target.port}`
+      const status = result.alreadyRunning ? 'Already running' : '✓ Connected'
+      ctx.logger.info(`${status}\n✓ Public URL: ${result.proxyURL}\n✓ Target URL: ${targetUrl}`)
     }
   })
   return cmd

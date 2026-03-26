@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.4.0] - 2026-03-26
+
+### New commands
+- `tunli up` — start all profiles defined in the local `.tunli/config.json`; skips profiles that are already running
+- `tunli down` — stop all tunnels belonging to local config profiles, without touching the daemon
+
+### Dashboard
+- Pre-start tunnel picker: if multiple tunnels are active and no profile argument is given, an interactive list is shown before opening the dashboard (↑↓ + Enter)
+- Ctrl+T opens a tunnel switcher modal inside the dashboard to switch between active tunnels without restarting
+- Header shows "(Ctrl+T switch · Ctrl+C quit)" hint when multiple tunnels are available
+
+### `tunli daemon`
+- `restart` now preserves active tunnels (dumps state, restarts daemon, restores tunnels — previously the behaviour of `reload`)
+- `reload` is kept as an alias for `restart`
+- `stop` now requires `--force` / `-f` if tunnels are active, with an explanatory message pointing to `daemon reload`
+- `status` now includes the number of active tunnels
+
+### `tunli stop`
+- Accepts multiple profile names: `tunli stop api frontend worker`
+
+### `tunli http`
+- `--foreground` alias: `--fg`
+- `--dashboard` alias: `--db`
+
+### Output improvements
+- `tunli http` / `tunli start`: structured output on connect — `✓ Connected`, `✓ Public URL`, `✓ Target URL`
+- Re-running a tunnel that is already active shows the same structured output with "Already running" instead of an error
+
+### Profile naming
+- Ad-hoc tunnels (no `--save`) are now named `adjective-port` (e.g. `swift-3000`) instead of `http://localhost:3000`
+- Adjective is derived from a hash of `host:port`, so different hosts on the same port get distinct names
+
 ## [0.3.0] - 2026-03-24
 
 ### Share / Connect (private peer-to-peer tunnels)

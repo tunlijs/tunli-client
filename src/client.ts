@@ -23,6 +23,8 @@ import {createCommandUpdate} from "#commands/CommandUpdate/CommandUpdate";
 import {createCommandIdentity} from "#commands/CommandIdentity/CommandIdentity";
 import {createCommandShare} from "#commands/CommandShare/CommandShare";
 import {createCommandConnect} from "#commands/CommandConnect/CommandConnect";
+import {createCommandUp} from "#commands/CommandUp/CommandUp";
+import {createCommandDown} from "#commands/CommandDown/CommandDown";
 import {ApiClient} from "#api-client/ApiClient";
 import {readPackageJson} from "#package-json/packageJson";
 
@@ -71,6 +73,8 @@ program.addCommand(createCommandUpdate(ctx, program))
 program.addCommand(createCommandIdentity(ctx, program))
 program.addCommand(createCommandShare(ctx, program))
 program.addCommand(createCommandConnect(ctx, program))
+program.addCommand(createCommandUp(ctx, program))
+program.addCommand(createCommandDown(ctx, program))
 
 program.action(({options}: ParseResult) => {
   if (options.version) {

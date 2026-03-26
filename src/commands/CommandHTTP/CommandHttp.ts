@@ -18,8 +18,8 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
   addSharedOptions(cmd, 'save')
   cmd.addArgument(new Argument('port', 'Local port to forward (e.g. 3000)').required().parse(checkPort))
   cmd.addArgument(new Argument('host', 'Local host to forward to (default: localhost)'))
-  cmd.addOption(new Option('foreground', 'Run tunnel in the foreground (no daemon)'))
-  cmd.addOption(new Option('dashboard', 'Show live dashboard (implies --foreground)'))
+  cmd.addOption(new Option('foreground', 'Run tunnel in the foreground (no daemon)').alias('fg'))
+  cmd.addOption(new Option('dashboard', 'Show live dashboard (implies --foreground)').alias('db'))
   cmd.addOption(new Option('logs', 'Show live log output (implies --foreground)'))
   cmd.action(async ({args, options}: ParseResult) => {
     const port = args.port as number
@@ -44,7 +44,7 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
       process.once('exit', () => proxy.disconnect())
       process.on('SIGINT', () => process.exit(0))
       process.on('SIGTERM', () => process.exit(0))
-      if (opts.dashboard) initDashboard(validated, appEmitter)
+      if (opts.dashboard) initDashboard(validated, appEmitter, [{ profileName: validated.profileName, proxyURL: validated.proxy.proxyURL, target: `${validated.target.host}:${validated.target.port}`, status: 'connecting' }], () => {})
       else if (opts.logs) initLiveLog(validated, appEmitter)
       return
     }
@@ -69,7 +69,11 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
       return ctx.exit(1)
     }
 
-    if (result.type === 'started') ctx.logger.info(`Tunnel started: ${result.proxyURL}`)
+    if (result.type === 'started') {
+      const targetUrl = `${validated.target.protocol}://${validated.target.host}:${validated.target.port}`
+      const status = result.alreadyRunning ? 'Already running' : '✓ Connected'
+      ctx.logger.info(`${status}\n✓ Public URL: ${result.proxyURL}\n✓ Target URL: ${targetUrl}`)
+    }
   })
   return cmd
 }

@@ -76,9 +76,12 @@ export class DaemonClient {
   // Attach to a running tunnel, streaming events into the given AppEventEmitter.
   // Resolves with tunnel info when attach-ok is received.
   // The socket stays open; events flow until the tunnel stops or process exits.
-  static attach(profileName: string, appEmitter: AppEventEmitter): Promise<{ status: TunnelInfo['status']; requestCount: number; lastLatency?: number }> {
-    return new Promise((resolve, reject) => {
+  // Call disconnect() to close the socket early (e.g. when switching tunnels).
+  static attach(profileName: string, appEmitter: AppEventEmitter): { promise: Promise<{ status: TunnelInfo['status']; requestCount: number; lastLatency?: number }>; disconnect: () => void } {
+    let socketRef: net.Socket | null = null
+    const promise = new Promise<{ status: TunnelInfo['status']; requestCount: number; lastLatency?: number }>((resolve, reject) => {
       const socket = net.connect(DAEMON_SOCKET_PATH)
+      socketRef = socket
       let buffer = ''
 
       socket.on('connect', () => {
@@ -141,6 +144,7 @@ export class DaemonClient {
       socket.on('error', reject)
       socket.on('close', () => appEmitter.emit('disconnect', 'daemon-closed' as never))
     })
+    return {promise, disconnect: () => { socketRef?.destroy(); socketRef = null }}
   }
 
   static async start(): Promise<void> {

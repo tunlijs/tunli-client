@@ -1,14 +1,10 @@
 # Roadmap
 
-## 0.4.0
-
+## 0.5.0
 - **Node.js 22 support** — CI currently runs on Node 25 only; target is Node >= 22
 
-## 0.5.0
-
-- **Shared daemon package** — audit how much of the daemon logic (Unix socket, protocol, process management) overlaps between client and server; extract into a shared library if the overlap justifies it
-
 ## Unscheduled
+- **Shared daemon package** — audit how much of the daemon logic (Unix socket, protocol, process management) overlaps between client and server; extract into a shared library if the overlap justifies it
 
 ### High priority
 

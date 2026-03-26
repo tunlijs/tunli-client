@@ -1,7 +1,12 @@
-import {Command} from "#commander/index";
+import {Command, Option} from "#commander/index";
 import type {Context} from "#types/types";
 import {DaemonClient} from "#daemon/DaemonClient";
 import {dumpAndStopDaemon} from "#lib/Flow/applyUpdate";
+
+const getTunnelCount = async (): Promise<number> => {
+  const result = await new DaemonClient().send({type: 'list'})
+  return result.type === 'list' ? result.tunnels.length : 0
+}
 
 export const createCommandDaemon = (ctx: Context, _program: Command) => {
   const cmd = new Command('daemon')
@@ -22,51 +27,62 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
 
   cmd.addCommand(
     new Command('stop')
-      .description('Stop the running daemon')
-      .action(async () => {
+      .description('Stop the running daemon and close all tunnels')
+      .addOption(new Option('force', 'Stop without confirmation even if tunnels are active').short('f'))
+      .action(async ({options}) => {
         if (!await DaemonClient.isRunning()) {
           ctx.logger.info('Daemon is not running.')
           return
         }
+        const count = await getTunnelCount()
+        if (count > 0 && !options.force) {
+          ctx.logger.error(`${count} tunnel(s) are active. This will close them.\nRun with --force to stop anyway, or use \`daemon reload\` to restart without losing tunnels.`)
+          return ctx.exit(1)
+        }
         await DaemonClient.stop()
-        ctx.logger.info('Daemon stopped.')
+        ctx.logger.info(count > 0 ? `Daemon stopped. ${count} tunnel(s) closed.` : 'Daemon stopped.')
       })
   )
 
+  // restart = dump + stop + start (tunnels are preserved)
+  const restartAction = async () => {
+    if (!await DaemonClient.isRunning()) {
+      ctx.logger.info('Daemon is not running. Starting...')
+      await DaemonClient.start()
+      ctx.logger.info('Daemon started.')
+      return
+    }
+    const count = await getTunnelCount()
+    await dumpAndStopDaemon()
+    await DaemonClient.start()
+    ctx.logger.info(count > 0 ? `Daemon restarted. ${count} tunnel(s) restored.` : 'Daemon restarted.')
+  }
+
   cmd.addCommand(
     new Command('restart')
-      .description('Restart the daemon')
-      .action(async () => {
-        if (await DaemonClient.isRunning()) {
-          await DaemonClient.stop()
-          ctx.logger.info('Daemon stopped.')
-        }
-        await DaemonClient.start()
-        ctx.logger.info('Daemon started.')
-      })
+      .description('Restart the daemon and restore all active tunnels')
+      .action(restartAction)
   )
 
   cmd.addCommand(
     new Command('reload')
-      .description('Dump active tunnels, restart daemon and restore them')
-      .action(async () => {
-        if (!await DaemonClient.isRunning()) {
-          ctx.logger.info('Daemon is not running.')
-          return
-        }
-        await dumpAndStopDaemon()
-        ctx.logger.info('Daemon stopped.')
-        await DaemonClient.start()
-        ctx.logger.info('Daemon restarted. Tunnels restored.')
-      })
+      .description('Alias for restart')
+      .action(restartAction)
   )
 
   cmd.addCommand(
     new Command('status')
       .description('Show daemon status')
       .action(async () => {
-        const running = await DaemonClient.isRunning()
-        ctx.logger.info(running ? 'Daemon is running.' : 'Daemon is not running.')
+        if (!await DaemonClient.isRunning()) {
+          ctx.logger.info('Daemon is not running.')
+          return
+        }
+        const count = await getTunnelCount()
+        ctx.logger.info(count > 0
+          ? `Daemon is running. ${count} active tunnel(s).`
+          : 'Daemon is running. No active tunnels.'
+        )
       })
   )
 

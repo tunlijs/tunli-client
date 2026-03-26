@@ -26,7 +26,7 @@ export const createCommandLogs = (ctx: Context, _program: Command) => {
 
       const appEmitter = new AppEventEmitter()
 
-      const status = await DaemonClient.attach(profileName, appEmitter).catch((e: Error) => {
+      const status = await DaemonClient.attach(profileName, appEmitter).promise.catch((e: Error) => {
         ctx.logger.error(e.message)
         ctx.exit(1)
       })

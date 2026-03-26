@@ -1,8 +1,9 @@
-import {useEffect, useRef, useState} from 'react'
+import {useState, useEffect, useRef} from 'react'
 import {Box, render, Text, useApp, useInput, useStdout} from 'ink'
 import chalk from 'chalk'
 import QRCode from 'qrcode'
 import type {ProfileConfig} from '#types/types'
+import type {TunnelInfo} from '#daemon/protocol'
 import type {AppEventEmitter, Req, Res} from '#cli-app/AppEventEmitter'
 import {readPackageJson} from '#package-json/packageJson'
 import {setCursorVisibility} from '#utils/cliFunctions'
@@ -54,6 +55,48 @@ const QRModal = ({text, onClose}: { text: string, onClose: () => void }) => {
       <Box flexDirection="column" borderStyle="round" borderColor="cyan" padding={1}>
         <Text dimColor>Press q or Escape to close</Text>
         <Text>{text}</Text>
+      </Box>
+    </Box>
+  )
+}
+
+const TunnelSwitcherModal = ({tunnels, current, onSelect, onClose}: {
+  tunnels: TunnelInfo[]
+  current: string
+  onSelect: (t: TunnelInfo) => void
+  onClose: () => void
+}) => {
+  const {stdout} = useStdout()
+  const [index, setIndex] = useState(() => Math.max(0, tunnels.findIndex(t => t.profileName === current)))
+
+  useInput((input, key) => {
+    if (key.escape || input === 'q') { onClose(); return }
+    if (key.upArrow) setIndex(i => Math.max(0, i - 1))
+    if (key.downArrow) setIndex(i => Math.min(tunnels.length - 1, i + 1))
+    if (key.return) {
+      const t = tunnels[index]
+      if (t && t.profileName !== current) onSelect(t)
+      onClose()
+    }
+  })
+
+  return (
+    <Box width="100%" height={stdout.rows} flexDirection="column" alignItems="center" justifyContent="center">
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1} minWidth={50}>
+        <Box justifyContent="space-between">
+          <Text bold>Switch Tunnel</Text>
+          <Text dimColor>q / Esc to close</Text>
+        </Box>
+        <Text> </Text>
+        {tunnels.map((t, i) => (
+          <Box key={t.profileName}>
+            <Box minWidth={2}><Text color="cyan">{i === index ? '›' : ' '}</Text></Box>
+            <Box minWidth={24}><Text bold={i === index}>{t.profileName}</Text></Box>
+            <Text dimColor>{t.proxyURL}</Text>
+          </Box>
+        ))}
+        <Text> </Text>
+        <Text dimColor>↑↓ navigate · Enter select</Text>
       </Box>
     </Box>
   )
@@ -115,9 +158,11 @@ const DetailModal = ({entry, onClose}: { entry: LogEntry, onClose: () => void })
 type DashboardAppProps = {
   config: ProfileConfig
   appEventEmitter: AppEventEmitter
+  allTunnels: TunnelInfo[]
+  onSwitchTunnel: (tunnel: TunnelInfo) => void
 }
 
-const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
+const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: DashboardAppProps) => {
   const {exit} = useApp()
   const {stdout} = useStdout()
   const packageJson = readPackageJson()
@@ -136,6 +181,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
   const [paused, setPaused] = useState(false)
   const [cursorIndex, setCursorIndex] = useState<number | null>(null)
   const [detailEntry, setDetailEntry] = useState<LogEntry | null>(null)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
 
   const runtimeStack = useRef(new Map<string, number>())
   const pendingLog = useRef<LogEntry[]>([])
@@ -224,6 +270,9 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
 
   // Main key handler — inactive when any modal is open
   useInput((input, key) => {
+    if (key.ctrl && input === 't' && allTunnels.length > 1) {
+      setSwitcherOpen(true)
+    }
     if (key.ctrl && input === 'r') {
       setAvailableUpdate(chalk.yellow('Restarting...'))
       process.send?.('restart')
@@ -285,7 +334,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
       const entry = displayed[cursorIndex]
       if (entry) setDetailEntry(entry)
     }
-  }, {isActive: qrText === null && detailEntry === null})
+  }, {isActive: qrText === null && detailEntry === null && !switcherOpen})
 
   const allowedCidr = config.allowedCidr.length ? config.allowedCidr : null
   const deniedCidr = config.deniedCidr.length ? config.deniedCidr : null
@@ -296,6 +345,15 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
 
   if (detailEntry !== null) {
     return <DetailModal entry={detailEntry} onClose={() => setDetailEntry(null)}/>
+  }
+
+  if (switcherOpen) {
+    return <TunnelSwitcherModal
+      tunnels={allTunnels}
+      current={config.profileName}
+      onSelect={onSwitchTunnel}
+      onClose={() => setSwitcherOpen(false)}
+    />
   }
 
   const displayedLog = [...accessLog].reverse()
@@ -309,7 +367,7 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
           <Text>tunli </Text>
           <Spinner spinning={spinning}/>
         </Box>
-        <Text>(Ctrl+C to quit)</Text>
+        <Text>{allTunnels.length > 1 ? '(Ctrl+T switch · Ctrl+C quit)' : '(Ctrl+C to quit)'}</Text>
       </Box>
       <Box marginTop={1} flexDirection="column">
         <InfoRow label="Tunnel" value={connectionStatus}/>
@@ -355,7 +413,12 @@ const DashboardApp = ({config, appEventEmitter}: DashboardAppProps) => {
   )
 }
 
-export const initDashboard = (config: ProfileConfig, appEventEmitter: AppEventEmitter) => {
+export const initDashboard = (
+  config: ProfileConfig,
+  appEventEmitter: AppEventEmitter,
+  allTunnels: TunnelInfo[],
+  onSwitchTunnel: (tunnel: TunnelInfo) => void,
+): { rerender: (config: ProfileConfig, emitter: AppEventEmitter, tunnels: TunnelInfo[]) => void } => {
   process.stdout.write('\x1b[?1049h') // enter alternate screen buffer
   setCursorVisibility(false)
 
@@ -366,5 +429,14 @@ export const initDashboard = (config: ProfileConfig, appEventEmitter: AppEventEm
 
   process.once('exit', restoreScreen)
 
-  render(<DashboardApp config={config} appEventEmitter={appEventEmitter}/>, {exitOnCtrlC: false})
+  const {rerender} = render(
+    <DashboardApp key={config.profileName} config={config} appEventEmitter={appEventEmitter} allTunnels={allTunnels} onSwitchTunnel={onSwitchTunnel}/>,
+    {exitOnCtrlC: false},
+  )
+
+  return {
+    rerender: (newConfig, newEmitter, newTunnels) => {
+      rerender(<DashboardApp key={newConfig.profileName} config={newConfig} appEventEmitter={newEmitter} allTunnels={newTunnels} onSwitchTunnel={onSwitchTunnel}/>)
+    },
+  }
 }

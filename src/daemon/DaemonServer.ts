@@ -80,7 +80,7 @@ export class DaemonServer {
 
   async #handleStart(req: StartRequest, socket: net.Socket): Promise<void> {
     if (this.#tunnels.has(req.profileName)) {
-      return this.#respond(socket, {type: 'error', message: `Tunnel "${req.profileName}" is already running`})
+      return this.#respond(socket, {type: 'started', profileName: req.profileName, proxyURL: req.proxyURL, alreadyRunning: true})
     }
     try {
       await this.#startTunnel(req)

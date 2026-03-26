@@ -47,7 +47,7 @@ export type EventMessage =
   | { type: 'event'; event: 'latency'; ms: number }
 
 export type DaemonResponse =
-  | { type: 'started'; profileName: string; proxyURL: string }
+  | { type: 'started'; profileName: string; proxyURL: string; alreadyRunning?: boolean }
   | { type: 'stopped'; profileName: string }
   | { type: 'list'; tunnels: TunnelInfo[] }
   | { type: 'dump'; tunnels: TunnelDump }
