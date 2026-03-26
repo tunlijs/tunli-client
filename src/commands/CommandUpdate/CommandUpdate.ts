@@ -1,17 +1,29 @@
-import {Command} from '#commander/index'
+import {Command, Option} from '#commander/index'
 import type {Context} from '#types/types'
 import {getAvailableUpdate} from '#cli-app/versionCheck'
 import {downloadBinaryUpdate} from '#lib/Flow/downloadBinaryUpdate'
 import {applyUpdate} from '#lib/Flow/applyUpdate'
 import {readPackageJson} from '#package-json/packageJson'
+import {DaemonClient} from '#daemon/DaemonClient'
+import {confirm} from '#commands/utils'
 
 export const createCommandUpdate = (ctx: Context, _program: Command) => {
+  type Options = { restart?: boolean; noRestart?: boolean }
+
   return new Command('update')
     .description('Update tunli to the latest version')
-    .action(async () => {
+    .addOption(new Option('restart', 'Restart the daemon after update without prompting'))
+    .addOption(new Option('no-restart', 'Skip daemon restart after update without prompting'))
+    .action(async ({options}) => {
+      const opt = options as Options
       const packageJson = readPackageJson()
       if (!packageJson) {
         ctx.logger.error('Could not read package.json')
+        return ctx.exit(1)
+      }
+
+      if (opt.restart && opt.noRestart) {
+        ctx.logger.error('--restart and --no-restart are mutually exclusive')
         return ctx.exit(1)
       }
 
@@ -20,6 +32,8 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
         ctx.logger.info(`Already on the latest version (${packageJson.version})`)
         return
       }
+
+      const daemonWasRunning = await DaemonClient.isRunning()
 
       ctx.logger.info(`Updating to ${latest}...`)
 
@@ -36,6 +50,25 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
       })
 
       await applyUpdate()
-      ctx.logger.info(`Updated to ${latest}. Restart tunli to apply.`)
+      ctx.logger.info(`Updated to ${latest}.`)
+
+      if (!daemonWasRunning) return
+
+      let doRestart: boolean
+      if (opt.restart) {
+        doRestart = true
+      } else if (opt.noRestart) {
+        doRestart = false
+      } else {
+        doRestart = await confirm('Restart daemon now to apply the update? [y/N] ')
+      }
+
+      if (!doRestart) {
+        ctx.logger.info('Daemon restart skipped. Run `tunli daemon restart` to apply.')
+        return
+      }
+
+      await DaemonClient.start()
+      ctx.logger.info('Daemon restarted.')
     })
 }

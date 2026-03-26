@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### `tunli update`
+- After a successful update, prompts to restart the daemon (`Restart daemon now to apply the update? [y/N]`) if the daemon was running at the time of the update
+- `--restart` — skip prompt, always restart
+- `--no-restart` — skip prompt, never restart
+- Both flags set together is an error
+
 ### Fixes
 - `tunli register` and `tunli auth` without `--relay` / `--name` now correctly fall back to the default server URL and name — `Option.default()` values are not forwarded by the CLI parser, so the fallback is now applied explicitly in the command
 
