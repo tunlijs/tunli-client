@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.2] - 2026-03-26
+
+### Fixes
+- Tunnel restore after `daemon restart` / update no longer reports "No active tunnels" — daemon now restores the dump before opening the socket, so `DaemonClient.start()` only returns once all tunnels are back
+
 ## [0.4.1] - 2026-03-26
 
 ### Fixes

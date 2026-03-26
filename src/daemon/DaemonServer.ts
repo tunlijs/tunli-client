@@ -51,9 +51,9 @@ export class DaemonServer {
       })
     })
 
+    await this.#restoreFromDump()
     await new Promise<void>((resolve) => this.#server!.listen(DAEMON_SOCKET_PATH, resolve))
     this.#logger.info('Daemon listening')
-    await this.#restoreFromDump()
 
     process.on('SIGTERM', () => this.#shutdown())
     process.on('SIGINT', () => this.#shutdown())
