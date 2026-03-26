@@ -17,9 +17,11 @@ export const createCommandAuth = (ctx: Context, _program: Command) => {
   cmd.action(async ({args, options}: ParseResult) => {
     const token = args.token as string
     const opt = options as Options
+    const relayUrl = opt.relay ?? DEFAULT_API_SERVER_URL
+    const serverName = opt.name ?? DEFAULT_SERVER_NAME
     ctx.config.global
-      .server(opt.name)
-      .setUrl(opt.relay)
+      .server(serverName)
+      .setUrl(relayUrl)
       .setAuthToken(token)
       .save()
     ctx.logger.info('Auth token saved.')

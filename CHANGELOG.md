@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixes
+- `tunli register` and `tunli auth` without `--relay` / `--name` now correctly fall back to the default server URL and name — `Option.default()` values are not forwarded by the CLI parser, so the fallback is now applied explicitly in the command
+
 ## [0.4.2] - 2026-03-26
 
 ### Fixes

@@ -20,7 +20,8 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
   cmd.action(async ({options}: ParseResult) => {
     const opt = options as Options
     const force = opt.force === true
-    const serverName = opt.name ?? ctx.config.global.activeServer ?? DEFAULT_SERVER_NAME
+    const relayUrl = opt.relay ?? DEFAULT_API_SERVER_URL
+    const serverName = opt.name ?? DEFAULT_SERVER_NAME
     const serverConf = ctx.config.global.server(serverName)
 
     if (serverConf.exists() && !force) {
@@ -28,7 +29,7 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
       return ctx.exit(0)
     }
 
-    const {data, error} = await ctx.apiClient.register(opt.relay)
+    const {data, error} = await ctx.apiClient.register(relayUrl)
 
     if (error || !data) {
       if (error) {
@@ -44,11 +45,11 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
     }
 
     serverConf
-      .setUrl(opt.relay)
+      .setUrl(relayUrl)
       .setAuthToken(data)
       .save()
 
-    ctx.logger.info(`Registration successful. Relay: ${opt.relay} (${serverName})`)
+    ctx.logger.info(`Registration successful. Relay: ${relayUrl} (${serverName})`)
 
     const isNew = loadIdentity() === null
     const identity = ensureIdentity()
