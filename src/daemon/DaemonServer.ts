@@ -7,6 +7,7 @@ import {AppEventEmitter, type Req, type ReqErrorMeta, type ReqMeta, type Res} fr
 import {ApiClient} from '#api-client/ApiClient'
 import {ParsedGlobalConfig} from '#config/ParsedGlobalConfig'
 import {createProxy} from '#proxy/Proxy'
+import {readPackageJson} from '#package-json/packageJson'
 
 type TunnelHandle = {
   info: TunnelInfo
@@ -21,12 +22,14 @@ export class DaemonServer {
 
   readonly #logger: Logger
   readonly #apiClient: ApiClient
+  readonly #version: string
   readonly #tunnels: Map<string, TunnelHandle> = new Map()
   #server?: net.Server
 
   constructor(globalConf: ParsedGlobalConfig, logger: Logger) {
     this.#logger = logger
     this.#apiClient = new ApiClient(globalConf)
+    this.#version = readPackageJson()?.version ?? 'unknown'
   }
 
   async listen(): Promise<void> {
@@ -74,6 +77,9 @@ export class DaemonServer {
       case 'shutdown':
         this.#respond(socket, {type: 'ok'});
         this.#shutdown();
+        return
+      case 'version':
+        this.#respond(socket, {type: 'version', version: this.#version})
         return
     }
   }

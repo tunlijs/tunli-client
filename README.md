@@ -232,10 +232,12 @@ tunli connect tunli1abc... --port 2222   # fixed local port
 
 ### `tunli update`
 
-Download and apply the latest binary release.
+Download and apply the latest binary release. If the daemon was running, you are prompted to restart it afterwards.
 
 ```bash
 tunli update
+tunli update --restart     # restart daemon automatically without prompting
+tunli update --no-restart  # skip daemon restart
 ```
 
 ### `tunli relay`

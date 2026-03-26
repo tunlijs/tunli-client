@@ -2,7 +2,9 @@
 // not actionable from userland. removeAllListeners is required because Node's default warning
 // output is itself a listener on 'warning'; adding our own handler alone does not suppress it.
 process.removeAllListeners('warning')
-process.on('warning', (w: Error & {code?: string}) => { if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`) })
+process.on('warning', (w: Error & { code?: string }) => {
+  if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`)
+})
 
 import {readJsonFile} from "#core/FS/utils";
 import {Option, type ParseResult, program} from '#commander/index';
@@ -33,6 +35,7 @@ import {createCommandUp} from "#commands/CommandUp/CommandUp";
 import {createCommandDown} from "#commands/CommandDown/CommandDown";
 import {ApiClient} from "#api-client/ApiClient";
 import {readPackageJson} from "#package-json/packageJson";
+import {DaemonClient} from "#daemon/DaemonClient";
 
 const globalConf = new ParsedGlobalConfig(readJsonFile(GLOBAL_CONFIG_FILEPATH), GLOBAL_CONFIG_FILEPATH)
 const localConf = FOUND_LOCAL_CONFIG_FILEPATH ? new ParsedLocalConfig(readJsonFile(FOUND_LOCAL_CONFIG_FILEPATH), FOUND_LOCAL_CONFIG_FILEPATH) : undefined
@@ -91,5 +94,20 @@ program.action(({options}: ParseResult) => {
     ctx.exit(1)
   }
 })
+
+const args = process.argv.slice(2)
+const isHelpOrVersion = args.some(a => a === '--help' || a === '-h' || a === '-?' || a === '--version' || a === '-v')
+const isDaemonCommand = args[0] === 'daemon'
+if (!isHelpOrVersion && !isDaemonCommand && packageJson?.version) {
+  const res = await new DaemonClient().send({type: 'version'}).catch(() => null)
+
+  if (res?.type === 'version' && res.version !== packageJson.version) {
+    ctx.logger.error(
+      `Daemon version mismatch: binary is ${packageJson.version}, daemon is ${res.version}.\n` +
+      `Run \`tunli daemon restart\` to apply the update.`
+    )
+    ctx.exit(1)
+  }
+}
 
 await program.parseAsync(process.argv);

@@ -1,12 +1,17 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.0] - 2026-03-26
 
 ### `tunli update`
 - After a successful update, prompts to restart the daemon (`Restart daemon now to apply the update? [y/N]`) if the daemon was running at the time of the update
 - `--restart` — skip prompt, always restart
 - `--no-restart` — skip prompt, never restart
 - Both flags set together is an error
+
+### Daemon version check
+- On every command (except `--help`, `--version`, and `tunli daemon …`), the CLI queries the running daemon's version and compares it to the binary version
+- If they differ, an error is shown and the process exits: `Daemon version mismatch: binary is X, daemon is Y. Run \`tunli daemon restart\` to apply the update.`
+- The daemon captures its version at startup so the check is reliable even after the binary has been swapped on disk
 
 ### Fixes
 - `tunli register` and `tunli auth` without `--relay` / `--name` now correctly fall back to the default server URL and name — `Option.default()` values are not forwarded by the CLI parser, so the fallback is now applied explicitly in the command

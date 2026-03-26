@@ -32,6 +32,7 @@ export type DaemonRequest =
   | { type: 'list' }
   | { type: 'dump' }
   | { type: 'shutdown' }
+  | { type: 'version' }
 
 // Event messages streamed over an attach connection (daemon → CLI).
 // Each variant maps directly to an AppEventEmitter event.
@@ -52,6 +53,7 @@ export type DaemonResponse =
   | { type: 'list'; tunnels: TunnelInfo[] }
   | { type: 'dump'; tunnels: TunnelDump }
   | { type: 'attach-ok'; profileName: string; proxyURL: string; status: TunnelInfo['status']; lastLatency?: number; requestCount: number }
+  | { type: 'version'; version: string }
   | EventMessage
   | { type: 'error'; message: string }
   | { type: 'ok' }
