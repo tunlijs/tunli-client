@@ -2,6 +2,7 @@ import {Command, Option} from "#commander/index";
 import type {Context} from "#types/types";
 import {DaemonClient} from "#daemon/DaemonClient";
 import {dumpAndStopDaemon} from "#lib/Flow/applyUpdate";
+import {confirm} from "#commands/utils";
 
 const getTunnelCount = async (): Promise<number> => {
   const result = await new DaemonClient().send({type: 'list'})
@@ -36,8 +37,8 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
         }
         const count = await getTunnelCount()
         if (count > 0 && !options.force) {
-          ctx.logger.error(`${count} tunnel(s) are active. This will close them.\nRun with --force to stop anyway, or use \`daemon reload\` to restart without losing tunnels.`)
-          return ctx.exit(1)
+          const yes = await confirm(`${count} tunnel(s) are active and will be closed. Stop anyway? [y/N] `)
+          if (!yes) return
         }
         await DaemonClient.stop()
         ctx.logger.info(count > 0 ? `Daemon stopped. ${count} tunnel(s) closed.` : 'Daemon stopped.')

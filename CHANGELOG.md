@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.1] - 2026-03-26
+
+### Fixes
+- DEP0169 (`url.parse`) deprecation warning no longer printed by `tunli share` / `tunli connect` — `process.removeAllListeners('warning')` is now called before the selective filter, since Node.js emits warnings via its own internal listener
+- Version check now uses proper semver comparison instead of strict equality — a remote version equal to the local version no longer triggers an update prompt
+
 ## [0.4.0] - 2026-03-26
 
 ### New commands

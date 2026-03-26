@@ -4,7 +4,9 @@
 // This binary is spawned and supervised by the launcher (launcher-main.ts).
 
 // Suppress DEP0169 (url.parse) — emitted by socket.io-client / engine.io-client internals,
-// not actionable from userland.
+// not actionable from userland. removeAllListeners is required because Node's default warning
+// output is itself a listener on 'warning'; adding our own handler alone does not suppress it.
+process.removeAllListeners('warning')
 process.on('warning', (w: Error & {code?: string}) => { if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`) })
 
 if (process.env.TUNLI_DAEMON === '1') {

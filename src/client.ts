@@ -1,3 +1,9 @@
+// Suppress DEP0169 (url.parse) — emitted by socket.io-client / engine.io-client internals,
+// not actionable from userland. removeAllListeners is required because Node's default warning
+// output is itself a listener on 'warning'; adding our own handler alone does not suppress it.
+process.removeAllListeners('warning')
+process.on('warning', (w: Error & {code?: string}) => { if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`) })
+
 import {readJsonFile} from "#core/FS/utils";
 import {Option, type ParseResult, program} from '#commander/index';
 import type {Context} from "#types/types";

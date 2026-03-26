@@ -5,9 +5,18 @@ import {exec} from 'node:child_process'
 import {isSea} from 'node:sea'
 import type {UpdateResult} from "./types.js";
 
+const isNewer = (remote: string, local: string): boolean => {
+  const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+  const [rMaj = 0, rMin = 0, rPat = 0] = parse(remote)
+  const [lMaj = 0, lMin = 0, lPat = 0] = parse(local)
+  if (rMaj !== lMaj) return rMaj > lMaj
+  if (rMin !== lMin) return rMin > lMin
+  return rPat > lPat
+}
+
 export const getAvailableUpdate = async (currentVersion: string): Promise<string | null> => {
   const version = await getLatestVersion().catch(() => null)
-  if (!version || version === currentVersion) return null
+  if (!version || !isNewer(version, currentVersion)) return null
   return version
 }
 
