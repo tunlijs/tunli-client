@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.1] - 2026-03-26
+
+### Fixes
+- `tunli update`: daemon is no longer implicitly stopped during the update — the binary is swapped first, the daemon is only stopped if the user confirms the restart prompt
+- Dashboard update message corrected: "Restart the daemon to apply" instead of "Restart tunli"
+
 ## [0.5.0] - 2026-03-26
 
 ### `tunli update`

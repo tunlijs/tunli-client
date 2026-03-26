@@ -21,10 +21,7 @@ export const dumpAndStopDaemon = async (): Promise<void> => {
   logDebug('Daemon stopped successfully.')
 }
 
-export const applyUpdate = async (): Promise<void> => {
-  logDebug('Update process: Checking daemon status...')
-  await dumpAndStopDaemon()
-
+export const applyBinary = (): void => {
   logDebug(`Replacing binary: ${TUNLI_BIN_NEW_PATH} -> ${TUNLI_BIN_PATH}`)
   try {
     renameSync(TUNLI_BIN_NEW_PATH, TUNLI_BIN_PATH)
@@ -33,4 +30,12 @@ export const applyUpdate = async (): Promise<void> => {
     logDebug(`Update failed during rename: ${error?.message ? error.message : String(error)}`)
     throw error
   }
+}
+
+// Used by the launcher on Ctrl+R restart: dump+stop daemon, then swap binary.
+// The new process will restore tunnels from the dump on startup.
+export const applyUpdate = async (): Promise<void> => {
+  logDebug('Update process: Checking daemon status...')
+  await dumpAndStopDaemon()
+  applyBinary()
 }

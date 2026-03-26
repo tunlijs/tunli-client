@@ -2,7 +2,7 @@ import {Command, Option} from '#commander/index'
 import type {Context} from '#types/types'
 import {getAvailableUpdate} from '#cli-app/versionCheck'
 import {downloadBinaryUpdate} from '#lib/Flow/downloadBinaryUpdate'
-import {applyUpdate} from '#lib/Flow/applyUpdate'
+import {applyBinary, dumpAndStopDaemon} from '#lib/Flow/applyUpdate'
 import {readPackageJson} from '#package-json/packageJson'
 import {DaemonClient} from '#daemon/DaemonClient'
 import {confirm} from '#commands/utils'
@@ -49,7 +49,7 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
         })
       })
 
-      await applyUpdate()
+      applyBinary()
       ctx.logger.info(`Updated to ${latest}.`)
 
       if (!daemonWasRunning) return
@@ -68,6 +68,7 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
         return
       }
 
+      await dumpAndStopDaemon()
       await DaemonClient.start()
       ctx.logger.info('Daemon restarted.')
     })

@@ -306,7 +306,7 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
         }
         setUpdatingPackage(false)
         if (result.status === 'success') {
-          setAvailableUpdate(chalk.green('Update done. Please restart tunli. (Ctrl+R to restart)'))
+          setAvailableUpdate(chalk.green('Update done. Restart the daemon to apply. (Ctrl+R to restart)'))
         } else {
           setAvailableUpdate(chalk.red(`Update failed: ${result.reason}`))
         }
