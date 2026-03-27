@@ -1,6 +1,21 @@
 import type {TargetConfig} from '#types/types'
 import type {Req, Res, ReqMeta, ReqErrorMeta} from '#cli-app/AppEventEmitter'
 
+export type StoredRequestMeta = {
+  id: string            // relay requestId
+  timestamp: number
+  method: string
+  path: string
+  headers: Record<string, string>
+  bodyUnavailable: boolean  // true after restart or excluded body
+  replayOf?: string
+  response: { status: number; durationMs: number } | null
+}
+
+export type StoredRequest = StoredRequestMeta & {
+  body: string | null   // in-memory only, never over IPC
+}
+
 export type TunnelInfo = {
   profileName: string
   proxyURL: string
@@ -33,6 +48,8 @@ export type DaemonRequest =
   | { type: 'dump' }
   | { type: 'shutdown' }
   | { type: 'version' }
+  | { type: 'list-requests'; profileName: string; limit?: number }
+  | { type: 'replay'; profileName: string; requestId: string }
 
 // Event messages streamed over an attach connection (daemon → CLI).
 // Each variant maps directly to an AppEventEmitter event.
@@ -54,6 +71,8 @@ export type DaemonResponse =
   | { type: 'dump'; tunnels: TunnelDump }
   | { type: 'attach-ok'; profileName: string; proxyURL: string; status: TunnelInfo['status']; lastLatency?: number; requestCount: number }
   | { type: 'version'; version: string }
+  | { type: 'request-list'; requests: StoredRequestMeta[] }
+  | { type: 'replay-done'; requestId: string; replayId: string; status: number; durationMs: number }
   | EventMessage
   | { type: 'error'; message: string }
   | { type: 'ok' }

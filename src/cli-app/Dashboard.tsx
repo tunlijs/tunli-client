@@ -9,6 +9,7 @@ import {readPackageJson} from '#package-json/packageJson'
 import {setCursorVisibility} from '#utils/cliFunctions'
 import {getAvailableUpdate, performUpdate} from '#cli-app/versionCheck'
 import {CHECK_FOR_UPDATES} from "#lib/defs";
+import {DaemonClient} from '#daemon/DaemonClient'
 
 type LogEntry = {
   method: string
@@ -18,6 +19,7 @@ type LogEntry = {
   id: number
   req: Req
   res: Res
+  replayable: boolean
 }
 
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '')
@@ -102,11 +104,17 @@ const TunnelSwitcherModal = ({tunnels, current, onSelect, onClose}: {
   )
 }
 
-const DetailModal = ({entry, onClose}: { entry: LogEntry, onClose: () => void }) => {
+const DetailModal = ({entry, onClose, onReplay, replayState}: {
+  entry: LogEntry
+  onClose: () => void
+  onReplay: (requestId: string) => void
+  replayState: {status: 'replaying' | 'done' | 'error'; result?: {status: number; durationMs: number}; error?: string} | null
+}) => {
   const {stdout} = useStdout()
 
   useInput((input, key) => {
     if (key.escape || input === 'q') onClose()
+    if (input === 'r' && entry.replayable) onReplay(entry.req.requestId)
   })
 
   const reqHeaders = Object.entries(entry.req.headers)
@@ -124,6 +132,18 @@ const DetailModal = ({entry, onClose}: { entry: LogEntry, onClose: () => void })
           {entry.runtime ? <Box><Text dimColor>Duration  </Text><Text>{entry.runtime}</Text></Box> : null}
           <Box><Text dimColor>Time  </Text><Text>{new Date(entry.id).toLocaleTimeString()}</Text></Box>
         </Box>
+        {entry.replayable && (
+          <Box marginTop={1} gap={2}>
+            <Text dimColor>[r] Replay</Text>
+            {replayState?.status === 'replaying' && <Text color="yellow">Replaying…</Text>}
+            {replayState?.status === 'done' && replayState.result && (
+              <Text color={replayState.result.status >= 500 ? 'red' : replayState.result.status >= 400 ? 'yellow' : 'green'}>
+                → {replayState.result.status}  {replayState.result.durationMs}ms
+              </Text>
+            )}
+            {replayState?.status === 'error' && <Text color="red">{replayState.error}</Text>}
+          </Box>
+        )}
 
         <Text> </Text>
         <Text bold>Request Headers</Text>
@@ -176,17 +196,27 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
   const [blockedCount, setBlockedCount] = useState(0)
   const [lastBlockedIp, setLastBlockedIp] = useState('')
   const [accessLog, setAccessLog] = useState<LogEntry[]>([])
+  const [logGeneration, setLogGeneration] = useState(0)
   const [qrText, setQrText] = useState<string | null>(null)
   const [latency, setLatency] = useState<number | null>(null)
   const [paused, setPaused] = useState(false)
   const [cursorIndex, setCursorIndex] = useState<number | null>(null)
   const [detailEntry, setDetailEntry] = useState<LogEntry | null>(null)
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [replayedIds, setReplayedIds] = useState<Set<string>>(new Set())
+  const [replayState, setReplayState] = useState<{
+    requestId: string
+    status: 'replaying' | 'done' | 'error'
+    result?: {status: number; durationMs: number}
+    error?: string
+  } | null>(null)
 
   const runtimeStack = useRef(new Map<string, number>())
   const pendingLog = useRef<LogEntry[]>([])
   const accessLogRef = useRef<LogEntry[]>([])
   const pausedRef = useRef(false)
+  const batchRef = useRef<LogEntry[]>([])
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const forwardingUrl = `${config.proxy.proxyURL} -> http://${config.target.host}:${config.target.port}/`
 
@@ -238,18 +268,26 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
               : chalk.red(label)
         }
 
-        const entry: LogEntry = {method: req.method, path: req.path, status: rspMsg, runtime, id: now, req, res}
-
-        setRequestCount(c => c + 1)
+        const entry: LogEntry = {method: req.method, path: req.path, status: rspMsg, runtime, id: now, req, res, replayable: true}
 
         if (pausedRef.current) {
           pendingLog.current.push(entry)
+          setRequestCount(c => c + 1)
         } else {
-          setAccessLog(log => {
-            const next = [...log, entry].slice(-30)
-            accessLogRef.current = next
-            return next
-          })
+          batchRef.current.push(entry)
+          if (batchTimerRef.current === null) {
+            batchTimerRef.current = setTimeout(() => {
+              batchTimerRef.current = null
+              const toFlush = batchRef.current.splice(0)
+              setRequestCount(c => c + toFlush.length)
+              setLogGeneration(g => g + 1)
+              setAccessLog(log => {
+                const next = [...log, ...toFlush].slice(-30)
+                accessLogRef.current = next
+                return next
+              })
+            }, 50)
+          }
         }
       })
       .on('client-blocked', (ip) => {
@@ -258,7 +296,24 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
       })
       .on('latency', (ms) => setLatency(ms))
       .on('request-count', (count) => setRequestCount(count))
+    return () => {
+      if (batchTimerRef.current !== null) clearTimeout(batchTimerRef.current)
+    }
   }, [])
+
+  const handleReplay = (requestId: string) => {
+    setReplayState({requestId, status: 'replaying'})
+    new DaemonClient().send({type: 'replay', profileName: config.profileName, requestId})
+      .then(res => {
+        if (res.type === 'replay-done') {
+          setReplayedIds(prev => new Set([...prev, requestId]))
+          setReplayState({requestId, status: 'done', result: {status: res.status, durationMs: res.durationMs}})
+        } else if (res.type === 'error') {
+          setReplayState({requestId, status: 'error', error: res.message})
+        }
+      })
+      .catch(e => setReplayState({requestId, status: 'error', error: e instanceof Error ? e.message : String(e)}))
+  }
 
   // Ctrl+C always active
   useInput((input, key) => {
@@ -344,7 +399,12 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
   }
 
   if (detailEntry !== null) {
-    return <DetailModal entry={detailEntry} onClose={() => setDetailEntry(null)}/>
+    return <DetailModal
+      entry={detailEntry}
+      onClose={() => { setDetailEntry(null); setReplayState(null) }}
+      onReplay={handleReplay}
+      replayState={replayState?.requestId === detailEntry.req.requestId ? replayState : null}
+    />
   }
 
   if (switcherOpen) {
@@ -356,44 +416,60 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
     />
   }
 
-  const displayedLog = [...accessLog].reverse()
-  const pathColWidth = Math.max(40, ...accessLog.map(e => e.path.length + 3))
+  // Fixed rows: 1 (header) + 1 (marginTop gap) + Tunnel + Profile + Config + QR-Code
+  //           + 1 (empty) + Latency + Forwarding + Connections
+  //           + 1 (empty) + 1 (HTTP Requests header) + 1 (separator)
+  let fixedRows = 13
+  if (packageJson) fixedRows++
+  if (availableUpdate) fixedRows++
+  if (allowedCidr ?? deniedCidr) fixedRows += 2  // empty separator + Blocked row
+  if (allowedCidr) fixedRows++
+  if (deniedCidr) fixedRows++
+  const maxLogEntries = Math.max(1, stdout.rows - fixedRows)
+  const displayedLog = [...accessLog].reverse().slice(0, maxLogEntries)
   const statusColWidth = Math.max(20, ...accessLog.map(e => stripAnsi(e.status).length + 3))
+  const availableForPath = stdout.columns - 2 - 8 - statusColWidth - 12
+  const pathColWidth = Math.min(
+    Math.max(20, availableForPath),
+    Math.max(40, ...accessLog.map(e => e.path.length + 3)),
+  )
 
   return (
     <Box flexDirection="column" height={stdout.rows}>
-      <Box width="100%" justifyContent="space-between">
-        <Box>
-          <Text>tunli </Text>
-          <Spinner spinning={spinning}/>
+      <Box flexShrink={0} flexDirection="column">
+        <Box width="100%" justifyContent="space-between">
+          <Box>
+            <Text>tunli </Text>
+            <Spinner spinning={spinning}/>
+          </Box>
+          <Text>{allTunnels.length > 1 ? '(Ctrl+T switch · Ctrl+C quit)' : '(Ctrl+C to quit)'}</Text>
         </Box>
-        <Text>{allTunnels.length > 1 ? '(Ctrl+T switch · Ctrl+C quit)' : '(Ctrl+C to quit)'}</Text>
-      </Box>
-      <Box marginTop={1} flexDirection="column">
-        <InfoRow label="Tunnel" value={connectionStatus}/>
-        {packageJson ? <InfoRow label="Version" value={packageJson.version}/> : null}
-        {availableUpdate ? <InfoRow label={chalk.yellow('Update')} value={availableUpdate}/> : null}
-        <InfoRow label="Profile" value={config.profileName}/>
-        <InfoRow label="Config" value={config.filepath}/>
-        <InfoRow label="QR-Code" value="Ctrl-Q"/>
-        {(allowedCidr ?? deniedCidr) ? <Text> </Text> : null}
-        {allowedCidr ? <InfoRow label="Allowed" value={allowedCidr.join(', ')}/> : null}
-        {deniedCidr ? <InfoRow label="Denied" value={deniedCidr.join(', ')}/> : null}
-        {(allowedCidr ?? deniedCidr) ? (
-          <InfoRow label="Blocked" value={`${blockedCount}${lastBlockedIp ? ` (${lastBlockedIp})` : ''}`}/>
-        ) : null}
+        <Box marginTop={1} flexDirection="column">
+          <InfoRow label="Tunnel" value={connectionStatus}/>
+          {packageJson ? <InfoRow label="Version" value={packageJson.version}/> : null}
+          {availableUpdate ? <InfoRow label={chalk.yellow('Update')} value={availableUpdate}/> : null}
+          <InfoRow label="Profile" value={config.profileName}/>
+          <InfoRow label="Config" value={config.filepath}/>
+          <InfoRow label="QR-Code" value="Ctrl-Q"/>
+          {(allowedCidr ?? deniedCidr) ? <Text> </Text> : null}
+          {allowedCidr ? <InfoRow label="Allowed" value={allowedCidr.join(', ')}/> : null}
+          {deniedCidr ? <InfoRow label="Denied" value={deniedCidr.join(', ')}/> : null}
+          {(allowedCidr ?? deniedCidr) ? (
+            <InfoRow label="Blocked" value={`${blockedCount}${lastBlockedIp ? ` (${lastBlockedIp})` : ''}`}/>
+          ) : null}
+          <Text> </Text>
+          <InfoRow label="Latency" value={latency !== null ? `${latency}ms` : '—'}/>
+          <InfoRow label="Forwarding" value={forwardingUrl}/>
+          <InfoRow label="Connections" value={String(requestCount)}/>
+        </Box>
         <Text> </Text>
-        <InfoRow label="Latency" value={latency !== null ? `${latency}ms` : '—'}/>
-        <InfoRow label="Forwarding" value={forwardingUrl}/>
-        <InfoRow label="Connections" value={String(requestCount)}/>
+        <Box justifyContent="space-between">
+          <Text>HTTP Requests{cursorIndex !== null ? chalk.dim('  ↑↓ navigate · Enter detail · Esc exit') : chalk.dim('  ↑↓ navigate · Ctrl+P pause')}</Text>
+          {paused ? <Text>{chalk.yellow('PAUSED')} {pendingLog.current.length > 0 ? chalk.dim(`+${pendingLog.current.length}`) : ''}</Text> : null}
+        </Box>
+        <Text>{'─'.repeat(stdout.columns)}</Text>
       </Box>
-      <Text> </Text>
-      <Box justifyContent="space-between">
-        <Text>HTTP Requests{cursorIndex !== null ? chalk.dim('  ↑↓ navigate · Enter detail · Esc exit') : chalk.dim('  ↑↓ navigate · Ctrl+P pause')}</Text>
-        {paused ? <Text>{chalk.yellow('PAUSED')} {pendingLog.current.length > 0 ? chalk.dim(`+${pendingLog.current.length}`) : ''}</Text> : null}
-      </Box>
-      <Text>{'─'.repeat(stdout.columns)}</Text>
-      <Box flexDirection="column">
+      <Box key={logGeneration} flexDirection="column">
         {displayedLog.map((entry, i) => {
           const selected = cursorIndex === i
           const dim = cursorIndex !== null && !selected
@@ -401,10 +477,17 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
           return (
             <Box key={entry.id}>
               <Box minWidth={2}><Text color="cyan">{prefix}</Text></Box>
-              <Box minWidth={8}><Text dimColor={dim}>{entry.method}</Text></Box>
-              <Box minWidth={pathColWidth}><Text dimColor={dim}>{entry.path}</Text></Box>
-              <Box minWidth={statusColWidth}><Text dimColor={dim}>{entry.status}</Text></Box>
+              <Box minWidth={8}><Text dimColor={dim} wrap="truncate">{entry.method}</Text></Box>
+              <Box minWidth={pathColWidth} width={pathColWidth}>
+                <Text dimColor={dim} wrap="truncate">
+                  {entry.path.length > pathColWidth - 1
+                    ? entry.path.slice(0, pathColWidth - 2) + '…'
+                    : entry.path}
+                </Text>
+              </Box>
+              <Box minWidth={statusColWidth} width={statusColWidth}><Text dimColor={dim} wrap="truncate">{entry.status}</Text></Box>
               {entry.runtime ? <Text dimColor={dim}>{entry.runtime}</Text> : null}
+              {replayedIds.has(entry.req.requestId) ? <Text dimColor> ↺</Text> : null}
             </Box>
           )
         })}

@@ -47,3 +47,8 @@ export const RESTART_DUMP_FILEPATH = resolve(GLOBAL_CONFIG_DIR, 'dump.json')
 
 export const IDENTITY_KEY_PATH = resolve(GLOBAL_CONFIG_DIR, 'identity.key')
 export const IDENTITY_PUB_PATH = resolve(GLOBAL_CONFIG_DIR, 'identity.pub')
+
+export const REPLAY_META_FILEPATH = resolve(GLOBAL_CONFIG_DIR, 'replay-meta.json')
+export const REPLAY_BODY_LIMIT = 1024 * 1024 // 1 MB
+export const REPLAY_BUFFER_CAPACITY = 200
+export const REPLAY_META_TTL_MS = 24 * 60 * 60 * 1000 // 24h

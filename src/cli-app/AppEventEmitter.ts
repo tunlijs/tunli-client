@@ -33,6 +33,16 @@ export type ReqErrorMeta = {
 
 export type ReadyInfo = ProxyConfig & { target: TargetConfig }
 
+export type CapturedRequestEvent = {
+  requestId: string
+  method: string
+  path: string
+  headers: Record<string, string>
+  body: string | null
+  bodyUnavailable: boolean
+  response: { status: number; durationMs: number }
+}
+
 type AppEvents =
   "connect"
   | "disconnect"
@@ -44,6 +54,7 @@ type AppEvents =
   | "request-error"
   | "latency"
   | "request-count"
+  | "captured-request"
 
 export class AppEventEmitter extends EventEmitter {
 
@@ -56,6 +67,7 @@ export class AppEventEmitter extends EventEmitter {
   on(eventName: 'connect_error', listener: (e: Error) => void): this
   on(eventName: 'latency', listener: (ms: number) => void): this
   on(eventName: 'request-count', listener: (count: number) => void): this
+  on(eventName: 'captured-request', listener: (data: CapturedRequestEvent) => void): this
   on(eventName: AppEvents, listener: (...args: any[]) => unknown): this
   on(eventName: AppEvents, listener: (...args: any[]) => unknown): this {
     super.on(eventName, listener)
@@ -72,6 +84,7 @@ export class AppEventEmitter extends EventEmitter {
   emit(eventName: 'disconnect', reason: Socket.DisconnectReason): boolean
   emit(eventName: 'latency', ms: number): boolean
   emit(eventName: 'request-count', count: number): boolean
+  emit(eventName: 'captured-request', data: CapturedRequestEvent): boolean
   emit(eventName: AppEvents, ...args: any[]): boolean {
     return super.emit(eventName, ...args)
   }

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.0] - 2026-03-27
+
+### Request Replay
+- Requests are stored per tunnel in an in-memory ring buffer (capacity 200, configurable)
+- `tunli replay [profile]` — interactive picker to replay past requests; `--last` replays the most recent one directly; `--id <id>` for scripting
+- Dashboard: `[r]` in the detail modal replays the request and shows the new status/duration inline; replayed entries get a `↺` marker in the log list
+- Bodies are excluded for multipart/form-data, application/octet-stream, and payloads > 1 MB
+- On daemon shutdown, request metadata (without bodies) is persisted to `~/.tunli/replay-meta.json` and restored on next start (TTL 24 h); entries with unavailable bodies are shown but replay is disabled
+
+### Daemon version check
+- On every command (except `--help`, `--version`, and `tunli daemon …`), the CLI checks the running daemon version against the binary version
+- On mismatch: `Daemon version mismatch: binary is X, daemon is Y. Run \`tunli daemon restart\` to apply the update.`
+- The daemon captures its version at startup so the check stays accurate after a binary swap
+
+### Dashboard fixes
+- Log list is now limited to available terminal rows — info rows at the top no longer get squished when many requests arrive
+- Path column is capped to available terminal width and truncated with `…`; each row uses `wrap="truncate"` to prevent horizontal overflow and garbled output
+- Log updates are throttled to 50 ms — batches concurrent requests into a single render, eliminating most header flicker
+- Log container is remounted on each update flush, forcing a clean redraw and preventing leftover characters from shorter entries
+- Fixed: closing the dashboard while a request was in-flight could crash the daemon (EPIPE on the attach socket with no error handler)
+
 ## [0.5.1] - 2026-03-26
 
 ### Fixes

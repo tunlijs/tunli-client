@@ -3,7 +3,7 @@ import net from 'net'
 import {io, type Socket} from 'socket.io-client'
 import type {ProfileConfig} from "#types/types";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
-import {PING_INTERVAL} from "#lib/defs";
+import {PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
 
 interface TunnelRequestMeta {
   method: string
@@ -117,6 +117,7 @@ export const createProxy = async (
       socket.on('request-pipe-error', onPipeError)
 
       const forward = () => {
+        const forwardStart = Date.now()
         const localReq = http.request(
           {
             host: config.target.host,
@@ -146,6 +147,21 @@ export const createProxy = async (
                 headers: localRes.headers,
                 httpVersion: localRes.httpVersion,
               })
+            const contentType = (meta.headers['content-type'] ?? '').toLowerCase()
+            const isExcluded = contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')
+            const bodySize = bodyChunks.reduce((sum, c) => sum + c.length, 0)
+            const body = (!isExcluded && bodySize > 0 && bodySize <= REPLAY_BODY_LIMIT)
+              ? Buffer.concat(bodyChunks).toString('utf-8')
+              : null
+            appEventEmitter.emit('captured-request', {
+              requestId,
+              method: meta.method,
+              path: meta.path,
+              headers: meta.headers,
+              body,
+              bodyUnavailable: isExcluded || (bodySize > REPLAY_BODY_LIMIT),
+              response: {status: localRes.statusCode ?? 200, durationMs: Date.now() - forwardStart},
+            })
             localRes.on('data', (chunk: Buffer) => socket.emit('response-pipe', requestId, chunk))
             localRes.on('end', () => socket.emit('response-pipe-end', requestId))
             localRes.on('error', (e: Error) => socket.emit('response-pipe-error', requestId, e.message))

@@ -33,6 +33,7 @@ import {createCommandShare} from "#commands/CommandShare/CommandShare";
 import {createCommandConnect} from "#commands/CommandConnect/CommandConnect";
 import {createCommandUp} from "#commands/CommandUp/CommandUp";
 import {createCommandDown} from "#commands/CommandDown/CommandDown";
+import {createCommandReplay} from "#commands/CommandReplay/CommandReplay";
 import {ApiClient} from "#api-client/ApiClient";
 import {readPackageJson} from "#package-json/packageJson";
 import {DaemonClient} from "#daemon/DaemonClient";
@@ -84,6 +85,7 @@ program.addCommand(createCommandShare(ctx, program))
 program.addCommand(createCommandConnect(ctx, program))
 program.addCommand(createCommandUp(ctx, program))
 program.addCommand(createCommandDown(ctx, program))
+program.addCommand(createCommandReplay(ctx, program))
 
 program.action(({options}: ParseResult) => {
   if (options.version) {

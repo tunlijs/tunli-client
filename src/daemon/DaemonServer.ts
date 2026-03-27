@@ -1,13 +1,15 @@
 import net from 'net'
-import {readFileSync, unlinkSync} from 'node:fs'
-import {DAEMON_SOCKET_PATH, RESTART_DUMP_FILEPATH} from '#lib/defs'
-import type {DaemonRequest, DaemonResponse, EventMessage, StartRequest, TunnelDump, TunnelInfo} from '#daemon/protocol'
+import http from 'http'
+import {readFileSync, unlinkSync, writeFileSync} from 'node:fs'
+import {DAEMON_SOCKET_PATH, REPLAY_META_FILEPATH, REPLAY_BUFFER_CAPACITY, REPLAY_META_TTL_MS, RESTART_DUMP_FILEPATH} from '#lib/defs'
+import type {DaemonRequest, DaemonResponse, EventMessage, StartRequest, StoredRequestMeta, TunnelDump, TunnelInfo} from '#daemon/protocol'
 import type {Logger, ProfileConfig, TargetConfig} from '#types/types'
-import {AppEventEmitter, type Req, type ReqErrorMeta, type ReqMeta, type Res} from '#cli-app/AppEventEmitter'
+import {AppEventEmitter, type CapturedRequestEvent, type Req, type ReqErrorMeta, type ReqMeta, type Res} from '#cli-app/AppEventEmitter'
 import {ApiClient} from '#api-client/ApiClient'
 import {ParsedGlobalConfig} from '#config/ParsedGlobalConfig'
 import {createProxy} from '#proxy/Proxy'
 import {readPackageJson} from '#package-json/packageJson'
+import {ReplayBuffer} from '#daemon/ReplayBuffer'
 
 type TunnelHandle = {
   info: TunnelInfo
@@ -24,6 +26,7 @@ export class DaemonServer {
   readonly #apiClient: ApiClient
   readonly #version: string
   readonly #tunnels: Map<string, TunnelHandle> = new Map()
+  readonly #replayBuffers: Map<string, ReplayBuffer> = new Map()
   #server?: net.Server
 
   constructor(globalConf: ParsedGlobalConfig, logger: Logger) {
@@ -39,6 +42,7 @@ export class DaemonServer {
     }
 
     this.#server = net.createServer((socket) => {
+      socket.on('error', () => { /* swallow EPIPE / connection-reset from closed clients */ })
       let buffer = ''
       socket.on('data', (chunk) => {
         buffer += chunk.toString()
@@ -54,6 +58,7 @@ export class DaemonServer {
       })
     })
 
+    this.#loadReplayMeta()
     await this.#restoreFromDump()
     await new Promise<void>((resolve) => this.#server!.listen(DAEMON_SOCKET_PATH, resolve))
     this.#logger.info('Daemon listening')
@@ -81,6 +86,10 @@ export class DaemonServer {
       case 'version':
         this.#respond(socket, {type: 'version', version: this.#version})
         return
+      case 'list-requests':
+        return this.#handleListRequests(req, socket)
+      case 'replay':
+        return this.#handleReplay(req, socket)
     }
   }
 
@@ -130,6 +139,27 @@ export class DaemonServer {
     const proxy = await createProxy(profileConfig, appEmitter)
     handle.disconnect = proxy.disconnect
     this.#tunnels.set(req.profileName, handle)
+
+    // Create or reuse replay buffer for this tunnel
+    let replayBuf = this.#replayBuffers.get(req.profileName)
+    if (!replayBuf) {
+      replayBuf = new ReplayBuffer(REPLAY_BUFFER_CAPACITY)
+      this.#replayBuffers.set(req.profileName, replayBuf)
+    }
+    const buf = replayBuf
+    appEmitter.on('captured-request', (data: CapturedRequestEvent) => {
+      buf.push({
+        id: data.requestId,
+        timestamp: Date.now(),
+        method: data.method,
+        path: data.path,
+        headers: data.headers,
+        body: data.body,
+        bodyUnavailable: data.bodyUnavailable,
+        response: data.response,
+      })
+    })
+
     this.#logger.info(`Tunnel started: ${req.profileName} → ${req.proxyURL}`)
   }
 
@@ -152,6 +182,89 @@ export class DaemonServer {
     } catch (e) {
       this.#logger.error(`Failed to parse restart dump: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  #loadReplayMeta(): void {
+    try {
+      const raw = readFileSync(REPLAY_META_FILEPATH, 'utf-8')
+      const entries = JSON.parse(raw) as Record<string, StoredRequestMeta[]>
+      const cutoff = Date.now() - REPLAY_META_TTL_MS
+      for (const [profile, metas] of Object.entries(entries)) {
+        const fresh = metas.filter(m => m.timestamp > cutoff)
+        if (fresh.length === 0) continue
+        const buf = new ReplayBuffer(REPLAY_BUFFER_CAPACITY)
+        buf.restoreFromMeta(fresh)
+        this.#replayBuffers.set(profile, buf)
+      }
+    } catch { /* no file or parse error */ }
+  }
+
+  #handleListRequests(req: Extract<DaemonRequest, {type: 'list-requests'}>, socket: net.Socket): void {
+    const buf = this.#replayBuffers.get(req.profileName)
+    if (!buf) return this.#respond(socket, {type: 'request-list', requests: []})
+    this.#respond(socket, {type: 'request-list', requests: buf.getAll(req.limit)})
+  }
+
+  async #handleReplay(req: Extract<DaemonRequest, {type: 'replay'}>, socket: net.Socket): Promise<void> {
+    const handle = this.#tunnels.get(req.profileName)
+    const buf = this.#replayBuffers.get(req.profileName)
+    if (!handle || !buf) {
+      return this.#respond(socket, {type: 'error', message: `No active tunnel for profile "${req.profileName}"`})
+    }
+    const stored = buf.getById(req.requestId)
+    if (!stored) {
+      return this.#respond(socket, {type: 'error', message: `Request not found: ${req.requestId}`})
+    }
+    if (stored.bodyUnavailable) {
+      return this.#respond(socket, {type: 'error', message: 'Cannot replay: body not available after restart'})
+    }
+    const {target} = handle.startRequest
+    const start = Date.now()
+    try {
+      const result = await new Promise<{status: number; durationMs: number}>((resolve, reject) => {
+        const localReq = http.request({
+          host: target.host,
+          port: target.port,
+          method: stored.method,
+          path: stored.path,
+          headers: stored.headers,
+        }, (res) => {
+          const durationMs = Date.now() - start
+          res.resume()
+          res.on('end', () => resolve({status: res.statusCode ?? 200, durationMs}))
+          res.on('error', reject)
+        })
+        localReq.on('error', reject)
+        if (stored.body) localReq.write(stored.body)
+        localReq.end()
+      })
+      const replayId = `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+      buf.push({
+        id: replayId,
+        timestamp: Date.now(),
+        method: stored.method,
+        path: stored.path,
+        headers: stored.headers,
+        body: stored.body,
+        bodyUnavailable: false,
+        replayOf: stored.id,
+        response: result,
+      })
+      this.#respond(socket, {type: 'replay-done', requestId: req.requestId, replayId, ...result})
+    } catch (e) {
+      this.#respond(socket, {type: 'error', message: e instanceof Error ? e.message : String(e)})
+    }
+  }
+
+  #persistReplayMeta(): void {
+    try {
+      const data: Record<string, StoredRequestMeta[]> = {}
+      for (const [profile, buf] of this.#replayBuffers) {
+        const meta = buf.toMeta()
+        if (meta.length > 0) data[profile] = meta
+      }
+      writeFileSync(REPLAY_META_FILEPATH, JSON.stringify(data))
+    } catch { /* best-effort */ }
   }
 
   #handleAttach(req: Extract<DaemonRequest, { type: 'attach' }>, socket: net.Socket): void {
@@ -233,6 +346,7 @@ export class DaemonServer {
       unlinkSync(DAEMON_SOCKET_PATH)
     } catch { /* already gone */
     }
+    this.#persistReplayMeta()
     process.exit(0)
   }
 }
