@@ -21,6 +21,16 @@ const root = {
     },
     {
       type: 'command',
+      name: 'https',
+      children: [
+        {type: 'argument', name: 'port', required: true, parse: Number},
+        {type: 'argument', name: 'host', required: false},
+        {type: 'option', name: 'save', argument: 'profile'},
+        {type: 'option', name: 'global', short: 'g'},
+      ]
+    },
+    {
+      type: 'command',
       name: 'start',
       aliasPrefix: '@',
       children: [
