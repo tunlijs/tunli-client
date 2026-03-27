@@ -39,12 +39,12 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
 
     if (opts.foreground || opts.dashboard || opts.logs) {
       const appEmitter = new AppEventEmitter()
+      if (opts.dashboard) initDashboard(validated, appEmitter, [{ profileName: validated.profileName, proxyURL: validated.proxy.proxyURL, target: `${validated.target.host}:${validated.target.port}`, status: 'connecting' }], () => {})
+      else if (opts.logs) initLiveLog(validated, appEmitter)
       const proxy = await createProxy(validated, appEmitter)
       process.once('exit', () => proxy.disconnect())
       process.on('SIGINT', () => process.exit(0))
       process.on('SIGTERM', () => process.exit(0))
-      if (opts.dashboard) initDashboard(validated, appEmitter, [{ profileName: validated.profileName, proxyURL: validated.proxy.proxyURL, target: `${validated.target.host}:${validated.target.port}`, status: 'connecting' }], () => {})
-      else if (opts.logs) initLiveLog(validated, appEmitter)
       return
     }
 

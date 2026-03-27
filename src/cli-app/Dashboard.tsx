@@ -94,7 +94,7 @@ const TunnelSwitcherModal = ({tunnels, current, onSelect, onClose}: {
           <Box key={t.profileName}>
             <Box minWidth={2}><Text color="cyan">{i === index ? '›' : ' '}</Text></Box>
             <Box minWidth={24}><Text bold={i === index}>{t.profileName}</Text></Box>
-            <Text dimColor>{t.proxyURL}</Text>
+            <Text dimColor>{t.proxyURL} → {t.target}</Text>
           </Box>
         ))}
         <Text> </Text>

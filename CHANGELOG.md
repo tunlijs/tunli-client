@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2026-03-27
 
 ### HTTPS target support
 - `tunli https <port>` — new command to tunnel to a local HTTPS service; mirrors `tunli http` with protocol set to `https`
