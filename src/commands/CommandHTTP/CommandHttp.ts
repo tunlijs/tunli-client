@@ -1,5 +1,5 @@
 import {Argument, Command, Option, type ParseResult} from "#commander/index";
-import type {Context} from "#types/types";
+import type {Context, Protocol} from "#types/types";
 import {checkPort} from "#utils/checkFunctions";
 import {resolveConfig} from "#commands/CommandConfig/utils/resolveConfig";
 import {addSharedOptions} from "#commands/CommandConfig/utils/sharedOptions";
@@ -11,10 +11,9 @@ import {createProxy} from "#proxy/Proxy";
 import {initDashboard} from "#cli-app/Dashboard";
 import {initLiveLog} from "#cli-app/LiveLog";
 
-export const createCommandHttp = (ctx: Context, _program: Command) => {
-  const cmd = new Command('http')
-    .description('Start a tunnel to a local HTTP service')
-    .alias('https')
+export const createCommandHttp = (ctx: Context, _program: Command, protocol: Protocol = 'http') => {
+  const cmd = new Command(protocol)
+    .description(`Start a tunnel to a local ${protocol.toUpperCase()} service`)
   addSharedOptions(cmd, 'save')
   cmd.addArgument(new Argument('port', 'Local port to forward (e.g. 3000)').required().parse(checkPort))
   cmd.addArgument(new Argument('host', 'Local host to forward to (default: localhost)'))
@@ -32,7 +31,7 @@ export const createCommandHttp = (ctx: Context, _program: Command) => {
       profile: opts.save
     }, 'save')
 
-    config.update({protocol: 'http', host, port})
+    config.update({protocol, host, port})
 
     const validated = await validateProfileConfig(ctx, config)
 

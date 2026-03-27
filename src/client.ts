@@ -66,6 +66,7 @@ program
 program.addCommand(createCommandInit(ctx, program))
 program.addCommand(createCommandConfig(ctx, program))
 program.addCommand(createCommandHttp(ctx, program), {isDefault: true})
+program.addCommand(createCommandHttp(ctx, program, 'https'))
 program.addCommand(createCommandRegister(ctx, program))
 // program.addCommand(createCommandRefresh(program)) TBD
 // program.addCommand(createCommandInvite(program)) TBD

@@ -1,10 +1,32 @@
 import net from 'net'
 import http from 'http'
+import https from 'https'
 import {readFileSync, unlinkSync, writeFileSync} from 'node:fs'
-import {DAEMON_SOCKET_PATH, REPLAY_META_FILEPATH, REPLAY_BUFFER_CAPACITY, REPLAY_META_TTL_MS, RESTART_DUMP_FILEPATH} from '#lib/defs'
-import type {DaemonRequest, DaemonResponse, EventMessage, StartRequest, StoredRequestMeta, TunnelDump, TunnelInfo} from '#daemon/protocol'
+import {
+  DAEMON_SOCKET_PATH,
+  REPLAY_BUFFER_CAPACITY,
+  REPLAY_META_FILEPATH,
+  REPLAY_META_TTL_MS,
+  RESTART_DUMP_FILEPATH
+} from '#lib/defs'
+import type {
+  DaemonRequest,
+  DaemonResponse,
+  EventMessage,
+  StartRequest,
+  StoredRequestMeta,
+  TunnelDump,
+  TunnelInfo
+} from '#daemon/protocol'
 import type {Logger, ProfileConfig, TargetConfig} from '#types/types'
-import {AppEventEmitter, type CapturedRequestEvent, type Req, type ReqErrorMeta, type ReqMeta, type Res} from '#cli-app/AppEventEmitter'
+import {
+  AppEventEmitter,
+  type CapturedRequestEvent,
+  type Req,
+  type ReqErrorMeta,
+  type ReqMeta,
+  type Res
+} from '#cli-app/AppEventEmitter'
 import {ApiClient} from '#api-client/ApiClient'
 import {ParsedGlobalConfig} from '#config/ParsedGlobalConfig'
 import {createProxy} from '#proxy/Proxy'
@@ -42,7 +64,8 @@ export class DaemonServer {
     }
 
     this.#server = net.createServer((socket) => {
-      socket.on('error', () => { /* swallow EPIPE / connection-reset from closed clients */ })
+      socket.on('error', () => { /* swallow EPIPE / connection-reset from closed clients */
+      })
       let buffer = ''
       socket.on('data', (chunk) => {
         buffer += chunk.toString()
@@ -95,7 +118,12 @@ export class DaemonServer {
 
   async #handleStart(req: StartRequest, socket: net.Socket): Promise<void> {
     if (this.#tunnels.has(req.profileName)) {
-      return this.#respond(socket, {type: 'started', profileName: req.profileName, proxyURL: req.proxyURL, alreadyRunning: true})
+      return this.#respond(socket, {
+        type: 'started',
+        profileName: req.profileName,
+        proxyURL: req.proxyURL,
+        alreadyRunning: true
+      })
     }
     try {
       await this.#startTunnel(req)
@@ -123,18 +151,31 @@ export class DaemonServer {
     const info: TunnelInfo = {
       profileName: req.profileName,
       proxyURL: req.proxyURL,
-      target: `${req.target.host}:${req.target.port}`,
+      target: `${req.target.protocol}://${req.target.host}:${req.target.port}`,
       status: 'connecting',
     }
 
     const appEmitter = new AppEventEmitter()
-    const handle: TunnelHandle = {info, startRequest: req, appEmitter, disconnect: () => {}, requestCount: 0}
+    const handle: TunnelHandle = {
+      info, startRequest: req, appEmitter, disconnect: () => {
+      }, requestCount: 0
+    }
 
-    appEmitter.on('connect', () => { info.status = 'connected' })
-    appEmitter.on('disconnect', () => { info.status = 'disconnected' })
-    appEmitter.on('connect_error', () => { info.status = 'error' })
-    appEmitter.on('latency', (ms) => { handle.lastLatency = ms })
-    appEmitter.on('response', () => { handle.requestCount++ })
+    appEmitter.on('connect', () => {
+      info.status = 'connected'
+    })
+    appEmitter.on('disconnect', () => {
+      info.status = 'disconnected'
+    })
+    appEmitter.on('connect_error', () => {
+      info.status = 'error'
+    })
+    appEmitter.on('latency', (ms) => {
+      handle.lastLatency = ms
+    })
+    appEmitter.on('response', () => {
+      handle.requestCount++
+    })
 
     const proxy = await createProxy(profileConfig, appEmitter)
     handle.disconnect = proxy.disconnect
@@ -196,16 +237,17 @@ export class DaemonServer {
         buf.restoreFromMeta(fresh)
         this.#replayBuffers.set(profile, buf)
       }
-    } catch { /* no file or parse error */ }
+    } catch { /* no file or parse error */
+    }
   }
 
-  #handleListRequests(req: Extract<DaemonRequest, {type: 'list-requests'}>, socket: net.Socket): void {
+  #handleListRequests(req: Extract<DaemonRequest, { type: 'list-requests' }>, socket: net.Socket): void {
     const buf = this.#replayBuffers.get(req.profileName)
     if (!buf) return this.#respond(socket, {type: 'request-list', requests: []})
     this.#respond(socket, {type: 'request-list', requests: buf.getAll(req.limit)})
   }
 
-  async #handleReplay(req: Extract<DaemonRequest, {type: 'replay'}>, socket: net.Socket): Promise<void> {
+  async #handleReplay(req: Extract<DaemonRequest, { type: 'replay' }>, socket: net.Socket): Promise<void> {
     const handle = this.#tunnels.get(req.profileName)
     const buf = this.#replayBuffers.get(req.profileName)
     if (!handle || !buf) {
@@ -221,13 +263,18 @@ export class DaemonServer {
     const {target} = handle.startRequest
     const start = Date.now()
     try {
-      const result = await new Promise<{status: number; durationMs: number}>((resolve, reject) => {
-        const localReq = http.request({
+      const result = await new Promise<{ status: number; durationMs: number }>((resolve, reject) => {
+        const requestFn = target.protocol === 'https' ? https.request : http.request
+        const localReq = requestFn({
           host: target.host,
           port: target.port,
           method: stored.method,
           path: stored.path,
-          headers: stored.headers,
+          headers: {
+            ...stored.headers,
+            host: target.host
+          },
+          ...(target.protocol === 'https' && {rejectUnauthorized: false, servername: target.host}),
         }, (res) => {
           const durationMs = Date.now() - start
           res.resume()
@@ -264,7 +311,8 @@ export class DaemonServer {
         if (meta.length > 0) data[profile] = meta
       }
       writeFileSync(REPLAY_META_FILEPATH, JSON.stringify(data))
-    } catch { /* best-effort */ }
+    } catch { /* best-effort */
+    }
   }
 
   #handleAttach(req: Extract<DaemonRequest, { type: 'attach' }>, socket: net.Socket): void {

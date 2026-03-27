@@ -218,7 +218,7 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
   const batchRef = useRef<LogEntry[]>([])
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const forwardingUrl = `${config.proxy.proxyURL} -> http://${config.target.host}:${config.target.port}/`
+  const forwardingUrl = `${config.proxy.proxyURL} -> ${config.target.protocol}://${config.target.host}:${config.target.port}/`
 
   useEffect(() => {
     if (!CHECK_FOR_UPDATES) return

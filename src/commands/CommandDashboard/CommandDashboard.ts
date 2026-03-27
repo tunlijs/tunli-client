@@ -43,14 +43,17 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       }
 
       const buildMockConfig = (info: TunnelInfo): ProfileConfig => {
-        const [host, portStr] = info.target.split(':')
+        const url = new URL(info.target)
+        const protocol = url.protocol.slice(0, -1) as 'http' | 'https'
+        const host = url.hostname
+        const port = url.port ? Number(url.port) : (protocol === 'https' ? 443 : 80)
         return {
           profileName: info.profileName,
           filepath: '-',
           allowedCidr: [],
           deniedCidr: [],
           proxy: {proxyIdent: '', proxyURL: info.proxyURL},
-          target: {host: host ?? 'localhost', port: Number(portStr ?? 80), protocol: 'http' as const},
+          target: {host, port, protocol},
           serverConfig: {url: '', authToken: ''},
           apiClient: ctx.apiClient,
         }

@@ -79,7 +79,7 @@ const preProcess = (argv: string[]): string[] => {
       const url = new URL(first)
       if (['http:', 'https:'].includes(url.protocol)) {
         const port = url.port || (url.protocol === 'https:' ? '443' : '80')
-        args.splice(0, 1, 'http', port, url.hostname)
+        args.splice(0, 1, url.protocol.slice(0, -1), port, url.hostname)
       }
     } catch {
       // not a URL, continue

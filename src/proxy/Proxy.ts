@@ -1,5 +1,7 @@
 import http from 'http'
+import https from 'https'
 import net from 'net'
+import tls from 'tls'
 import {io, type Socket} from 'socket.io-client'
 import type {ProfileConfig} from "#types/types";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
@@ -118,13 +120,22 @@ export const createProxy = async (
 
       const forward = () => {
         const forwardStart = Date.now()
-        const localReq = http.request(
+        const requestFn = config.target.protocol === 'https' ? https.request : http.request
+
+        const localReq = requestFn(
           {
             host: config.target.host,
             port: config.target.port,
             method: meta.method,
             path: meta.path,
-            headers: meta.headers
+            headers: {
+              ...meta.headers,
+              host: config.target.host
+            },
+            ...(config.target.protocol === 'https' && {
+              rejectUnauthorized: false,
+              servername: config.target.host
+            }),
           },
           (localRes) => {
             socket.emit('response', requestId, {
@@ -183,10 +194,16 @@ export const createProxy = async (
   }
 
   function forwardUpgrade(socket: Socket, requestId: string, meta: TunnelRequestMeta) {
-    const tcpSocket = net.connect(config.target.port, config.target.host)
+    const tcpSocket = config.target.protocol === 'https'
+      ? tls.connect(config.target.port, config.target.host, {
+          rejectUnauthorized: false,
+          servername: config.target.host,
+        })
+      : net.connect(config.target.port, config.target.host)
 
     tcpSocket.once('connect', () => {
-      const rawHeaders = Object.entries(meta.headers)
+      const headers = {...meta.headers, host: config.target.host}
+      const rawHeaders = Object.entries(headers)
         .map(([k, v]) => `${k}: ${v}`)
         .join('\r\n')
       tcpSocket.write(`${meta.method} ${meta.path} HTTP/1.1\r\n${rawHeaders}\r\n\r\n`)
