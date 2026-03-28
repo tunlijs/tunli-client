@@ -1,13 +1,13 @@
 import {renameSync, writeFileSync} from 'node:fs'
 import {RESTART_DUMP_FILEPATH, TUNLI_BIN_NEW_PATH, TUNLI_BIN_PATH} from '#lib/defs'
-import {DaemonClient} from '#daemon/DaemonClient'
+import {daemonClient} from '#daemon/DaemonClient'
 import {logDebug} from "#logger/logger"
 
 export const dumpAndStopDaemon = async (): Promise<void> => {
-  if (!await DaemonClient.isRunning()) return
+  if (!await daemonClient().isRunning()) return
 
   logDebug('Daemon is active. Requesting tunnel dump...')
-  const response = await new DaemonClient().send({type: 'dump'})
+  const response = await daemonClient().send({type: 'dump'})
 
   if (response.type === 'dump' && response.tunnels.length > 0) {
     logDebug(`Dump received. Saving ${response.tunnels.length} tunnels to cache.`)
@@ -17,7 +17,7 @@ export const dumpAndStopDaemon = async (): Promise<void> => {
   }
 
   logDebug('Stopping daemon...')
-  await DaemonClient.stop()
+  await daemonClient().stop()
   logDebug('Daemon stopped successfully.')
 }
 

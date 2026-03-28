@@ -4,7 +4,7 @@ import {getAvailableUpdate} from '#cli-app/versionCheck'
 import {downloadBinaryUpdate} from '#lib/Flow/downloadBinaryUpdate'
 import {applyBinary, dumpAndStopDaemon} from '#lib/Flow/applyUpdate'
 import {readPackageJson} from '#package-json/packageJson'
-import {DaemonClient} from '#daemon/DaemonClient'
+import {daemonClient} from '#daemon/DaemonClient'
 import {confirm} from '#commands/utils'
 
 export const createCommandUpdate = (ctx: Context, _program: Command) => {
@@ -33,7 +33,7 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
         return
       }
 
-      const daemonWasRunning = await DaemonClient.isRunning()
+      const daemonWasRunning = await daemonClient().isRunning()
 
       ctx.logger.info(`Updating to ${latest}...`)
 
@@ -69,7 +69,7 @@ export const createCommandUpdate = (ctx: Context, _program: Command) => {
       }
 
       await dumpAndStopDaemon()
-      await DaemonClient.start()
+      await daemonClient().start()
       ctx.logger.info('Daemon restarted.')
     })
 }

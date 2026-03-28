@@ -1,6 +1,6 @@
 import {Argument, Command} from "#commander/index";
 import type {Context, ProfileConfig} from "#types/types";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {attachTunnel, daemonClient} from "#daemon/DaemonClient";
 import type {TunnelInfo} from "#daemon/protocol";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {initDashboard} from "#cli-app/Dashboard";
@@ -11,12 +11,12 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
     .description('Attach to a running tunnel and show the live dashboard')
     .addArgument(new Argument('profile', 'Profile name to attach to'))
     .action(async ({args}) => {
-      if (!await DaemonClient.isRunning()) {
+      if (!await daemonClient().isRunning()) {
         ctx.logger.error('No daemon running. Start a tunnel first with `tunli http <port>`.')
         return ctx.exit(1)
       }
 
-      const listResult = await new DaemonClient().send({type: 'list'})
+      const listResult = await daemonClient().send({type: 'list'})
       if (listResult.type !== 'list') return ctx.exit(1)
 
       if (listResult.tunnels.length === 0) {
@@ -60,7 +60,10 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       }
 
       // Track the current attach so it can be disconnected on tunnel switch
-      const attachState = {disconnect: () => {}}
+      const attachState = {
+        disconnect: () => {
+        }
+      }
 
       // C: switch handler — called from inside the dashboard via Ctrl+T modal
       let rerenderDashboard: ((config: ProfileConfig, emitter: AppEventEmitter, tunnels: TunnelInfo[]) => void) | null = null
@@ -69,12 +72,12 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
         attachState.disconnect()
 
         const newEmitter = new AppEventEmitter()
-        const {promise, disconnect} = DaemonClient.attach(newTunnel.profileName, newEmitter)
+        const {promise, disconnect} = attachTunnel(newTunnel.profileName, newEmitter)
         attachState.disconnect = disconnect
 
         const newResult = await promise.catch(() => null)
 
-        const refreshed = await new DaemonClient().send({type: 'list'})
+        const refreshed = await daemonClient().send({type: 'list'})
         const allTunnels = refreshed.type === 'list' ? refreshed.tunnels : [newTunnel]
 
         rerenderDashboard?.(buildMockConfig(newTunnel), newEmitter, allTunnels)
@@ -86,7 +89,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       }
 
       const appEmitter = new AppEventEmitter()
-      const {promise: attachPromise, disconnect} = DaemonClient.attach(profileName, appEmitter)
+      const {promise: attachPromise, disconnect} = attachTunnel(profileName, appEmitter)
       attachState.disconnect = disconnect
 
       const attachResult = await attachPromise.catch((e: Error) => {

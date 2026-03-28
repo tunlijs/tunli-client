@@ -7,7 +7,7 @@ import {resolveConfig} from "#commands/CommandConfig/utils/resolveConfig";
 import type {ParsedProfileConfig} from "#config/ParsedProfileConfig";
 import {addAllowDenyCidrOptions} from "#commands/shared/allowDenyCidrCommand";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
 
 const resolveProfile = (ctx: Context, options: SharedOptions, profile: string): ParsedProfileConfig => {
   const config = resolveConfig(ctx, options, 'config-only')
@@ -48,9 +48,8 @@ export const createCommandStartProfile = (ctx: Context, _program: Command) => {
 
     const validated = await validateProfileConfig(ctx, config)
 
-    await DaemonClient.ensureRunning()
-    const client = new DaemonClient()
-    const result = await client.send({
+    await daemonClient().ensureRunning()
+    const result = await daemonClient().send({
       type: 'start',
       profileName: validated.profileName,
       proxyIdent: validated.proxy.proxyIdent,

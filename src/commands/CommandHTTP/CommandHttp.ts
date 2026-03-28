@@ -5,7 +5,7 @@ import {resolveConfig} from "#commands/CommandConfig/utils/resolveConfig";
 import {addSharedOptions} from "#commands/CommandConfig/utils/sharedOptions";
 import type {SharedOptions} from "#commands/CommandConfig/types";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {createProxy} from "#proxy/Proxy";
 import {initDashboard} from "#cli-app/Dashboard";
@@ -23,7 +23,12 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
   cmd.action(async ({args, options}: ParseResult) => {
     const port = args.port as number
     const host = (args.host as string | undefined) ?? 'localhost'
-    const opts = options as Omit<SharedOptions, "profile"> & { save: string; foreground: boolean; dashboard: boolean; logs: boolean }
+    const opts = options as Omit<SharedOptions, "profile"> & {
+      save: string;
+      foreground: boolean;
+      dashboard: boolean;
+      logs: boolean
+    }
 
     const config = resolveConfig(ctx, {
       local: opts.local === true,
@@ -39,7 +44,13 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
 
     if (opts.foreground || opts.dashboard || opts.logs) {
       const appEmitter = new AppEventEmitter()
-      if (opts.dashboard) initDashboard(validated, appEmitter, [{ profileName: validated.profileName, proxyURL: validated.proxy.proxyURL, target: `${validated.target.host}:${validated.target.port}`, status: 'connecting' }], () => {})
+      if (opts.dashboard) initDashboard(validated, appEmitter, [{
+        profileName: validated.profileName,
+        proxyURL: validated.proxy.proxyURL,
+        target: `${validated.target.host}:${validated.target.port}`,
+        status: 'connecting'
+      }], () => {
+      })
       else if (opts.logs) initLiveLog(validated, appEmitter)
       const proxy = await createProxy(validated, appEmitter)
       process.once('exit', () => proxy.disconnect())
@@ -48,19 +59,18 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
       return
     }
 
-    await DaemonClient.ensureRunning()
-    const client = new DaemonClient()
-    const result = await client.send({
-      type:        'start',
+    await daemonClient().ensureRunning()
+    const result = await daemonClient().send({
+      type: 'start',
       profileName: validated.profileName,
-      proxyIdent:  validated.proxy.proxyIdent,
-      proxyURL:    validated.proxy.proxyURL,
-      serverUrl:   validated.serverConfig.url,
-      authToken:   validated.serverConfig.authToken,
-      target:      validated.target,
-      filepath:    validated.filepath,
+      proxyIdent: validated.proxy.proxyIdent,
+      proxyURL: validated.proxy.proxyURL,
+      serverUrl: validated.serverConfig.url,
+      authToken: validated.serverConfig.authToken,
+      target: validated.target,
+      filepath: validated.filepath,
       allowedCidr: validated.allowedCidr,
-      deniedCidr:  validated.deniedCidr,
+      deniedCidr: validated.deniedCidr,
     })
 
     if (result.type === 'error') {

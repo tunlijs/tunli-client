@@ -1,11 +1,11 @@
 import {Command, Option} from "#commander/index";
 import type {Context} from "#types/types";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
 import {dumpAndStopDaemon} from "#lib/Flow/applyUpdate";
 import {confirm} from "#commands/utils";
 
 const getTunnelCount = async (): Promise<number> => {
-  const result = await new DaemonClient().send({type: 'list'})
+  const result = await daemonClient().send({type: 'list'})
   return result.type === 'list' ? result.tunnels.length : 0
 }
 
@@ -17,11 +17,11 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
     new Command('start')
       .description('Start the daemon in the background')
       .action(async () => {
-        if (await DaemonClient.isRunning()) {
+        if (await daemonClient().isRunning()) {
           ctx.logger.info('Daemon is already running.')
           return
         }
-        await DaemonClient.start()
+        await daemonClient().start()
         ctx.logger.info('Daemon started.')
       })
   )
@@ -31,7 +31,7 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
       .description('Stop the running daemon and close all tunnels')
       .addOption(new Option('force', 'Stop without confirmation even if tunnels are active').short('f'))
       .action(async ({options}) => {
-        if (!await DaemonClient.isRunning()) {
+        if (!await daemonClient().isRunning()) {
           ctx.logger.info('Daemon is not running.')
           return
         }
@@ -40,22 +40,22 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
           const yes = await confirm(`${count} tunnel(s) are active and will be closed. Stop anyway? [y/N] `)
           if (!yes) return
         }
-        await DaemonClient.stop()
+        daemonClient().stop()
         ctx.logger.info(count > 0 ? `Daemon stopped. ${count} tunnel(s) closed.` : 'Daemon stopped.')
       })
   )
 
   // restart = dump + stop + start (tunnels are preserved)
   const restartAction = async () => {
-    if (!await DaemonClient.isRunning()) {
+    if (!await daemonClient().isRunning()) {
       ctx.logger.info('Daemon is not running. Starting...')
-      await DaemonClient.start()
+      await daemonClient().start()
       ctx.logger.info('Daemon started.')
       return
     }
     const count = await getTunnelCount()
     await dumpAndStopDaemon()
-    await DaemonClient.start()
+    await daemonClient().start()
     ctx.logger.info(count > 0 ? `Daemon restarted. ${count} tunnel(s) restored.` : 'Daemon restarted.')
   }
 
@@ -75,7 +75,7 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
     new Command('status')
       .description('Show daemon status')
       .action(async () => {
-        if (!await DaemonClient.isRunning()) {
+        if (!await daemonClient().isRunning()) {
           ctx.logger.info('Daemon is not running.')
           return
         }

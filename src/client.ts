@@ -36,7 +36,7 @@ import {createCommandDown} from "#commands/CommandDown/CommandDown";
 import {createCommandReplay} from "#commands/CommandReplay/CommandReplay";
 import {ApiClient} from "#api-client/ApiClient";
 import {readPackageJson} from "#package-json/packageJson";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
 
 const globalConf = new ParsedGlobalConfig(readJsonFile(GLOBAL_CONFIG_FILEPATH), GLOBAL_CONFIG_FILEPATH)
 const localConf = FOUND_LOCAL_CONFIG_FILEPATH ? new ParsedLocalConfig(readJsonFile(FOUND_LOCAL_CONFIG_FILEPATH), FOUND_LOCAL_CONFIG_FILEPATH) : undefined
@@ -55,6 +55,8 @@ const ctx: Context = {
     info: console.info,
     error: console.error,
     warn: console.warn,
+    debug: console.debug,
+    verbose: console.debug,
   }
 }
 
@@ -102,7 +104,7 @@ const args = process.argv.slice(2)
 const isHelpOrVersion = args.some(a => a === '--help' || a === '-h' || a === '-?' || a === '--version' || a === '-v')
 const isDaemonCommand = args[0] === 'daemon'
 if (!isHelpOrVersion && !isDaemonCommand && packageJson?.version) {
-  const res = await new DaemonClient().send({type: 'version'}).catch(() => null)
+  const res = await daemonClient().send({type: 'version'}).catch(() => null)
 
   if (res?.type === 'version' && res.version !== packageJson.version) {
     ctx.logger.error(

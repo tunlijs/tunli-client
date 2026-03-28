@@ -1,6 +1,6 @@
 import {Command} from "#commander/index";
 import type {Context} from "#types/types";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
 import {type Align, heading, row, separator, tableWidth} from "#output-formats/table";
 import chalk from "chalk";
 import type {TunnelInfo} from "#daemon/protocol";
@@ -48,12 +48,11 @@ export const createCommandList = (ctx: Context, _program: Command) => {
   return new Command('list')
     .description('List active tunnels')
     .action(async () => {
-      if (!await DaemonClient.isRunning()) {
+      if (!await daemonClient().isRunning()) {
         ctx.logger.info('No daemon running. Start a tunnel with `tunli http <port>`.')
         return
       }
-      const client = new DaemonClient()
-      const result = await client.send({type: 'list'})
+      const result = await daemonClient().send({type: 'list'})
       if (result.type !== 'list') {
         ctx.logger.error('Unexpected response from daemon.')
         return

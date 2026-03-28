@@ -1,7 +1,8 @@
 import {Command} from "#commander/index";
 import type {Context} from "#types/types";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
+
 export const createCommandUp = (ctx: Context, _program: Command) => {
   return new Command('up')
     .description('Start all profiles defined in the local config')
@@ -17,7 +18,7 @@ export const createCommandUp = (ctx: Context, _program: Command) => {
         return ctx.exit(1)
       }
 
-      await DaemonClient.ensureRunning()
+      await daemonClient().ensureRunning()
 
       for (const profile of profiles) {
         const validated = await validateProfileConfig(ctx, profile).catch((e: Error) => {
@@ -26,17 +27,17 @@ export const createCommandUp = (ctx: Context, _program: Command) => {
         })
         if (!validated) continue
 
-        const result = await new DaemonClient().send({
-          type:        'start',
+        const result = await daemonClient().send({
+          type: 'start',
           profileName: validated.profileName,
-          proxyIdent:  validated.proxy.proxyIdent,
-          proxyURL:    validated.proxy.proxyURL,
-          serverUrl:   validated.serverConfig.url,
-          authToken:   validated.serverConfig.authToken,
-          target:      validated.target,
-          filepath:    validated.filepath,
+          proxyIdent: validated.proxy.proxyIdent,
+          proxyURL: validated.proxy.proxyURL,
+          serverUrl: validated.serverConfig.url,
+          authToken: validated.serverConfig.authToken,
+          target: validated.target,
+          filepath: validated.filepath,
           allowedCidr: validated.allowedCidr,
-          deniedCidr:  validated.deniedCidr,
+          deniedCidr: validated.deniedCidr,
         })
 
         if (result.type === 'error') {

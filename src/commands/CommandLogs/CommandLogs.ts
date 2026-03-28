@@ -1,6 +1,6 @@
 import {Argument, Command} from "#commander/index";
 import type {Context} from "#types/types";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {attachTunnel, daemonClient} from "#daemon/DaemonClient";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {initLiveLog} from "#cli-app/LiveLog";
 
@@ -10,12 +10,12 @@ export const createCommandLogs = (ctx: Context, _program: Command) => {
     .description('Attach to a running tunnel and stream live log output')
     .addArgument(new Argument('profile', 'Profile name to attach to'))
     .action(async ({args}) => {
-      if (!await DaemonClient.isRunning()) {
+      if (!await daemonClient().isRunning()) {
         ctx.logger.error('No daemon running. Start a tunnel first with `tunli http <port>`.')
         return ctx.exit(1)
       }
 
-      const listResult = await new DaemonClient().send({type: 'list'})
+      const listResult = await daemonClient().send({type: 'list'})
       if (listResult.type !== 'list') return ctx.exit(1)
 
       const profileName = (args.profile as string | undefined) ?? listResult.tunnels[0]?.profileName
@@ -26,7 +26,7 @@ export const createCommandLogs = (ctx: Context, _program: Command) => {
 
       const appEmitter = new AppEventEmitter()
 
-      const status = await DaemonClient.attach(profileName, appEmitter).promise.catch((e: Error) => {
+      const status = await attachTunnel(profileName, appEmitter).promise.catch((e: Error) => {
         ctx.logger.error(e.message)
         ctx.exit(1)
       })

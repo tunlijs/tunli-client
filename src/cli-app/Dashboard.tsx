@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {Box, render, Text, useApp, useInput, useStdout} from 'ink'
 import chalk from 'chalk'
 import QRCode from 'qrcode'
@@ -9,7 +9,7 @@ import {readPackageJson} from '#package-json/packageJson'
 import {setCursorVisibility} from '#utils/cliFunctions'
 import {getAvailableUpdate, performUpdate} from '#cli-app/versionCheck'
 import {CHECK_FOR_UPDATES} from "#lib/defs";
-import {DaemonClient} from '#daemon/DaemonClient'
+import {daemonClient} from '#daemon/DaemonClient'
 
 type LogEntry = {
   method: string
@@ -72,7 +72,10 @@ const TunnelSwitcherModal = ({tunnels, current, onSelect, onClose}: {
   const [index, setIndex] = useState(() => Math.max(0, tunnels.findIndex(t => t.profileName === current)))
 
   useInput((input, key) => {
-    if (key.escape || input === 'q') { onClose(); return }
+    if (key.escape || input === 'q') {
+      onClose();
+      return
+    }
     if (key.upArrow) setIndex(i => Math.max(0, i - 1))
     if (key.downArrow) setIndex(i => Math.min(tunnels.length - 1, i + 1))
     if (key.return) {
@@ -108,7 +111,11 @@ const DetailModal = ({entry, onClose, onReplay, replayState}: {
   entry: LogEntry
   onClose: () => void
   onReplay: (requestId: string) => void
-  replayState: {status: 'replaying' | 'done' | 'error'; result?: {status: number; durationMs: number}; error?: string} | null
+  replayState: {
+    status: 'replaying' | 'done' | 'error';
+    result?: { status: number; durationMs: number };
+    error?: string
+  } | null
 }) => {
   const {stdout} = useStdout()
 
@@ -122,23 +129,25 @@ const DetailModal = ({entry, onClose, onReplay, replayState}: {
 
   return (
     <Box width="100%" height={stdout.rows} flexDirection="column" alignItems="center" justifyContent="center">
-      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1} width={Math.min(stdout.columns - 4, 100)}>
+      <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1}
+           width={Math.min(stdout.columns - 4, 100)}>
         <Box justifyContent="space-between">
           <Text bold>{entry.method} {entry.path}</Text>
           <Text dimColor>q / Esc to close</Text>
         </Box>
         <Box marginTop={1} gap={4}>
           <Text>{entry.status}</Text>
-          {entry.runtime ? <Box><Text dimColor>Duration  </Text><Text>{entry.runtime}</Text></Box> : null}
-          <Box><Text dimColor>Time  </Text><Text>{new Date(entry.id).toLocaleTimeString()}</Text></Box>
+          {entry.runtime ? <Box><Text dimColor>Duration </Text><Text>{entry.runtime}</Text></Box> : null}
+          <Box><Text dimColor>Time </Text><Text>{new Date(entry.id).toLocaleTimeString()}</Text></Box>
         </Box>
         {entry.replayable && (
           <Box marginTop={1} gap={2}>
             <Text dimColor>[r] Replay</Text>
             {replayState?.status === 'replaying' && <Text color="yellow">Replaying…</Text>}
             {replayState?.status === 'done' && replayState.result && (
-              <Text color={replayState.result.status >= 500 ? 'red' : replayState.result.status >= 400 ? 'yellow' : 'green'}>
-                → {replayState.result.status}  {replayState.result.durationMs}ms
+              <Text
+                color={replayState.result.status >= 500 ? 'red' : replayState.result.status >= 400 ? 'yellow' : 'green'}>
+                → {replayState.result.status} {replayState.result.durationMs}ms
               </Text>
             )}
             {replayState?.status === 'error' && <Text color="red">{replayState.error}</Text>}
@@ -207,7 +216,7 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
   const [replayState, setReplayState] = useState<{
     requestId: string
     status: 'replaying' | 'done' | 'error'
-    result?: {status: number; durationMs: number}
+    result?: { status: number; durationMs: number }
     error?: string
   } | null>(null)
 
@@ -268,7 +277,16 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
               : chalk.red(label)
         }
 
-        const entry: LogEntry = {method: req.method, path: req.path, status: rspMsg, runtime, id: now, req, res, replayable: true}
+        const entry: LogEntry = {
+          method: req.method,
+          path: req.path,
+          status: rspMsg,
+          runtime,
+          id: now,
+          req,
+          res,
+          replayable: true
+        }
 
         if (pausedRef.current) {
           pendingLog.current.push(entry)
@@ -303,7 +321,7 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
 
   const handleReplay = (requestId: string) => {
     setReplayState({requestId, status: 'replaying'})
-    new DaemonClient().send({type: 'replay', profileName: config.profileName, requestId})
+    daemonClient().send({type: 'replay', profileName: config.profileName, requestId})
       .then(res => {
         if (res.type === 'replay-done') {
           setReplayedIds(prev => new Set([...prev, requestId]))
@@ -401,7 +419,10 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
   if (detailEntry !== null) {
     return <DetailModal
       entry={detailEntry}
-      onClose={() => { setDetailEntry(null); setReplayState(null) }}
+      onClose={() => {
+        setDetailEntry(null);
+        setReplayState(null)
+      }}
       onReplay={handleReplay}
       replayState={replayState?.requestId === detailEntry.req.requestId ? replayState : null}
     />
@@ -464,8 +485,10 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
         </Box>
         <Text> </Text>
         <Box justifyContent="space-between">
-          <Text>HTTP Requests{cursorIndex !== null ? chalk.dim('  ↑↓ navigate · Enter detail · Esc exit') : chalk.dim('  ↑↓ navigate · Ctrl+P pause')}</Text>
-          {paused ? <Text>{chalk.yellow('PAUSED')} {pendingLog.current.length > 0 ? chalk.dim(`+${pendingLog.current.length}`) : ''}</Text> : null}
+          <Text>HTTP
+            Requests{cursorIndex !== null ? chalk.dim('  ↑↓ navigate · Enter detail · Esc exit') : chalk.dim('  ↑↓ navigate · Ctrl+P pause')}</Text>
+          {paused ?
+            <Text>{chalk.yellow('PAUSED')} {pendingLog.current.length > 0 ? chalk.dim(`+${pendingLog.current.length}`) : ''}</Text> : null}
         </Box>
         <Text>{'─'.repeat(stdout.columns)}</Text>
       </Box>
@@ -485,7 +508,8 @@ const DashboardApp = ({config, appEventEmitter, allTunnels, onSwitchTunnel}: Das
                     : entry.path}
                 </Text>
               </Box>
-              <Box minWidth={statusColWidth} width={statusColWidth}><Text dimColor={dim} wrap="truncate">{entry.status}</Text></Box>
+              <Box minWidth={statusColWidth} width={statusColWidth}><Text dimColor={dim}
+                                                                          wrap="truncate">{entry.status}</Text></Box>
               {entry.runtime ? <Text dimColor={dim}>{entry.runtime}</Text> : null}
               {replayedIds.has(entry.req.requestId) ? <Text dimColor> ↺</Text> : null}
             </Box>
@@ -513,13 +537,15 @@ export const initDashboard = (
   process.once('exit', restoreScreen)
 
   const {rerender} = render(
-    <DashboardApp key={config.profileName} config={config} appEventEmitter={appEventEmitter} allTunnels={allTunnels} onSwitchTunnel={onSwitchTunnel}/>,
+    <DashboardApp key={config.profileName} config={config} appEventEmitter={appEventEmitter} allTunnels={allTunnels}
+                  onSwitchTunnel={onSwitchTunnel}/>,
     {exitOnCtrlC: false},
   )
 
   return {
     rerender: (newConfig, newEmitter, newTunnels) => {
-      rerender(<DashboardApp key={newConfig.profileName} config={newConfig} appEventEmitter={newEmitter} allTunnels={newTunnels} onSwitchTunnel={onSwitchTunnel}/>)
+      rerender(<DashboardApp key={newConfig.profileName} config={newConfig} appEventEmitter={newEmitter}
+                             allTunnels={newTunnels} onSwitchTunnel={onSwitchTunnel}/>)
     },
   }
 }

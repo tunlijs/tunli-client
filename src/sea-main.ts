@@ -6,8 +6,11 @@
 // Suppress DEP0169 (url.parse) — emitted by socket.io-client / engine.io-client internals,
 // not actionable from userland. removeAllListeners is required because Node's default warning
 // output is itself a listener on 'warning'; adding our own handler alone does not suppress it.
+
 process.removeAllListeners('warning')
-process.on('warning', (w: Error & {code?: string}) => { if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`) })
+process.on('warning', (w: Error & { code?: string }) => {
+  if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`)
+})
 
 if (process.env.TUNLI_DAEMON === '1') {
   await import('./daemon-main.js')
@@ -17,8 +20,9 @@ if (process.env.TUNLI_DAEMON === '1') {
   const {existsSync} = await import('node:fs')
   const {RESTART_DUMP_FILEPATH} = await import('./lib/defs.js')
   if (existsSync(RESTART_DUMP_FILEPATH)) {
-    const {DaemonClient} = await import('./daemon/DaemonClient.js')
-    await DaemonClient.ensureRunning()
+    const {daemonClient} = await import('./daemon/DaemonClient.js')
+    const client = daemonClient()
+    if (!await client.isRunning()) await client.start()
   }
   await import('./client.js')
 }

@@ -1,9 +1,8 @@
 import {Argument, Command, Option} from '#commander/index'
 import type {Context} from '#types/types'
-import {DaemonClient} from '#daemon/DaemonClient'
+import {daemonClient} from '#daemon/DaemonClient'
 import type {StoredRequestMeta, TunnelInfo} from '#daemon/protocol'
-import {render} from 'ink'
-import {Box, Text, useApp, useInput} from 'ink'
+import {Box, render, Text, useApp, useInput} from 'ink'
 import {useState} from 'react'
 import chalk from 'chalk'
 
@@ -24,7 +23,10 @@ const RequestPickerApp = ({requests, onSelect}: PickerAppProps) => {
   const [index, setIndex] = useState(0)
 
   useInput((input, key) => {
-    if (input === 'q' || key.escape) { exit(); return }
+    if (input === 'q' || key.escape) {
+      exit();
+      return
+    }
     if (key.upArrow) setIndex(i => Math.max(0, i - 1))
     if (key.downArrow) setIndex(i => Math.min(requests.length - 1, i + 1))
     if (key.return) {
@@ -67,7 +69,9 @@ const pickRequest = (requests: StoredRequestMeta[]): Promise<StoredRequestMeta |
   new Promise(resolve => {
     let selected: StoredRequestMeta | null = null
     const {waitUntilExit} = render(
-      <RequestPickerApp requests={requests} onSelect={r => { selected = r }}/>,
+      <RequestPickerApp requests={requests} onSelect={r => {
+        selected = r
+      }}/>,
       {exitOnCtrlC: true},
     )
     void waitUntilExit().then(() => resolve(selected)).catch(() => resolve(null))
@@ -87,7 +91,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
 
       // If no profile given, pick from running tunnels
       if (!profileName) {
-        const res = await new DaemonClient().send({type: 'list'}).catch(() => null)
+        const res = await daemonClient().send({type: 'list'}).catch(() => null)
         if (!res || res.type !== 'list' || res.tunnels.length === 0) {
           ctx.logger.error('No active tunnels.')
           return ctx.exit(1)
@@ -103,7 +107,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
         }
       }
 
-      const listRes = await new DaemonClient().send({type: 'list-requests', profileName}).catch(() => null)
+      const listRes = await daemonClient().send({type: 'list-requests', profileName}).catch(() => null)
       if (!listRes || listRes.type !== 'request-list') {
         ctx.logger.error('Failed to fetch request history.')
         return ctx.exit(1)
@@ -135,7 +139,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
       }
 
       ctx.logger.info(`Replaying ${target.method} ${target.path}…`)
-      const res = await new DaemonClient().send({type: 'replay', profileName, requestId: target.id}).catch(e => {
+      const res = await daemonClient().send({type: 'replay', profileName, requestId: target.id}).catch(e => {
         ctx.logger.error(e instanceof Error ? e.message : String(e))
         return null
       })

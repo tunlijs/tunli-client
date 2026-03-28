@@ -1,6 +1,7 @@
 import {Command} from "#commander/index";
 import type {Context} from "#types/types";
-import {DaemonClient} from "#daemon/DaemonClient";
+import {daemonClient} from "#daemon/DaemonClient";
+
 export const createCommandDown = (ctx: Context, _program: Command) => {
   return new Command('down')
     .description('Stop all tunnels belonging to the local config profiles')
@@ -10,12 +11,12 @@ export const createCommandDown = (ctx: Context, _program: Command) => {
         return ctx.exit(1)
       }
 
-      if (!await DaemonClient.isRunning()) {
+      if (!await daemonClient().isRunning()) {
         ctx.logger.info('No daemon running.')
         return
       }
 
-      const listResult = await new DaemonClient().send({type: 'list'})
+      const listResult = await daemonClient().send({type: 'list'})
       if (listResult.type !== 'list') return ctx.exit(1)
 
       const localProfileNames = new Set(ctx.config.local.profiles.map(p => p.name))
@@ -27,7 +28,7 @@ export const createCommandDown = (ctx: Context, _program: Command) => {
       }
 
       for (const tunnel of toStop) {
-        const result = await new DaemonClient().send({type: 'stop', profileName: tunnel.profileName})
+        const result = await daemonClient().send({type: 'stop', profileName: tunnel.profileName})
         if (result.type === 'stopped') {
           ctx.logger.info(`${tunnel.profileName}: stopped`)
         } else if (result.type === 'error') {

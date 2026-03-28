@@ -26,6 +26,10 @@ export const logDebug = (message: string) => {
   log('debug', message)
 }
 
+export const logVerbose = (message: string) => {
+  log('verbose', message)
+}
+
 export const logException = (e: unknown) => {
   const message = e instanceof Error ? e.message : String(e)
   log('error', message)

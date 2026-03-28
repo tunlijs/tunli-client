@@ -1,4 +1,3 @@
-import net from 'net'
 import http from 'http'
 import https from 'https'
 import {readFileSync, unlinkSync, writeFileSync} from 'node:fs'
@@ -32,6 +31,7 @@ import {ParsedGlobalConfig} from '#config/ParsedGlobalConfig'
 import {createProxy} from '#proxy/Proxy'
 import {readPackageJson} from '#package-json/packageJson'
 import {ReplayBuffer} from '#daemon/ReplayBuffer'
+import {DaemonServer as DaemonServerExt, type SocketWrapper} from '@tunli/daemon'
 
 type TunnelHandle = {
   info: TunnelInfo
@@ -42,83 +42,66 @@ type TunnelHandle = {
   requestCount: number
 }
 
+
+interface DaemonEventMap extends Record<string, Array<unknown>> {
+  "stop": [req: Extract<DaemonRequest, { type: 'stop' }>]
+  "start": [req: StartRequest];
+  "attach": [req: Extract<DaemonRequest, { type: 'attach' }>]
+  "list": [req: DaemonRequest]
+  "dump": [req: DaemonRequest]
+  "shutdown": [req: DaemonRequest]
+  "version": [req: DaemonRequest]
+  "replay": [req: Extract<DaemonRequest, { type: 'replay' }>]
+  "list-requests": [req: Extract<DaemonRequest, { type: 'list-requests' }>]
+  //"start": [req: StartRequest, socket: SocketWrapper<DaemonResponse>];
+}
+
+//  on(eventName: string, eventHandle: (req: DaemonRequest, socket: SocketWrapper<DaemonResponse>) => void): this {
+
 export class DaemonServer {
 
-  readonly #logger: Logger
+  readonly #daemonServer = new DaemonServerExt<DaemonRequest, DaemonResponse, DaemonEventMap>(DAEMON_SOCKET_PATH)
   readonly #apiClient: ApiClient
   readonly #version: string
   readonly #tunnels: Map<string, TunnelHandle> = new Map()
   readonly #replayBuffers: Map<string, ReplayBuffer> = new Map()
-  #server?: net.Server
 
   constructor(globalConf: ParsedGlobalConfig, logger: Logger) {
-    this.#logger = logger
+    this.#daemonServer.logger = logger
     this.#apiClient = new ApiClient(globalConf)
     this.#version = readPackageJson()?.version ?? 'unknown'
   }
 
   async listen(): Promise<void> {
-    try {
-      unlinkSync(DAEMON_SOCKET_PATH)
-    } catch { /* stale socket */
-    }
 
-    this.#server = net.createServer((socket) => {
-      socket.on('error', () => { /* swallow EPIPE / connection-reset from closed clients */
-      })
-      let buffer = ''
-      socket.on('data', (chunk) => {
-        buffer += chunk.toString()
-        const nl = buffer.indexOf('\n')
-        if (nl === -1) return
-        const line = buffer.slice(0, nl)
-        buffer = buffer.slice(nl + 1)
-        try {
-          void this.#handle(JSON.parse(line) as DaemonRequest, socket)
-        } catch {
-          this.#respond(socket, {type: 'error', message: 'Invalid request'})
-        }
-      })
+    this.#daemonServer.createServer((_req, socket) => {
+      socket.write({type: 'error', message: 'Invalid request'})
     })
+
+    this.#daemonServer.on('start', (req, wrapper) => this.#handleStart(req, wrapper))
+    this.#daemonServer.on('stop', (req, wrapper) => this.#handleStop(req, wrapper))
+    this.#daemonServer.on('attach', (req, wrapper) => this.#handleAttach(req, wrapper))
+    this.#daemonServer.on('list', (req, wrapper) => this.#handleList(req, wrapper))
+    this.#daemonServer.on('dump', (req, wrapper) => this.#handleDump(req, wrapper))
+    this.#daemonServer.on('shutdown', (_req, wrapper) => {
+      wrapper.write({type: 'ok'});
+      this.#daemonServer.shutdown()
+    })
+    this.#daemonServer.on('version', (_req, wrapper) => {
+      wrapper.write({type: 'version', version: this.#version})
+    })
+    this.#daemonServer.on('list-requests', (req, wrapper) => this.#handleListRequests(req, wrapper))
+    this.#daemonServer.on('replay', (req, wrapper) => this.#handleReplay(req, wrapper))
 
     this.#loadReplayMeta()
     await this.#restoreFromDump()
-    await new Promise<void>((resolve) => this.#server!.listen(DAEMON_SOCKET_PATH, resolve))
-    this.#logger.info('Daemon listening')
-
-    process.on('SIGTERM', () => this.#shutdown())
-    process.on('SIGINT', () => this.#shutdown())
+    await this.#daemonServer.listen()
+    this.#daemonServer.onShutdown(() => this.#shutdown())
   }
 
-  async #handle(req: DaemonRequest, socket: net.Socket): Promise<void> {
-    switch (req.type) {
-      case 'start':
-        return this.#handleStart(req, socket)
-      case 'stop':
-        return this.#handleStop(req, socket)
-      case 'attach':
-        return this.#handleAttach(req, socket)
-      case 'list':
-        return this.#handleList(socket)
-      case 'dump':
-        return this.#handleDump(socket)
-      case 'shutdown':
-        this.#respond(socket, {type: 'ok'});
-        this.#shutdown();
-        return
-      case 'version':
-        this.#respond(socket, {type: 'version', version: this.#version})
-        return
-      case 'list-requests':
-        return this.#handleListRequests(req, socket)
-      case 'replay':
-        return this.#handleReplay(req, socket)
-    }
-  }
-
-  async #handleStart(req: StartRequest, socket: net.Socket): Promise<void> {
+  async #handleStart(req: StartRequest, socket: SocketWrapper<DaemonResponse>): Promise<void> {
     if (this.#tunnels.has(req.profileName)) {
-      return this.#respond(socket, {
+      return socket.write({
         type: 'started',
         profileName: req.profileName,
         proxyURL: req.proxyURL,
@@ -127,9 +110,9 @@ export class DaemonServer {
     }
     try {
       await this.#startTunnel(req)
-      this.#respond(socket, {type: 'started', profileName: req.profileName, proxyURL: req.proxyURL})
+      socket.write({type: 'started', profileName: req.profileName, proxyURL: req.proxyURL})
     } catch (e) {
-      this.#respond(socket, {type: 'error', message: e instanceof Error ? e.message : String(e)})
+      socket.write({type: 'error', message: e instanceof Error ? e.message : String(e)})
     }
   }
 
@@ -161,21 +144,11 @@ export class DaemonServer {
       }, requestCount: 0
     }
 
-    appEmitter.on('connect', () => {
-      info.status = 'connected'
-    })
-    appEmitter.on('disconnect', () => {
-      info.status = 'disconnected'
-    })
-    appEmitter.on('connect_error', () => {
-      info.status = 'error'
-    })
-    appEmitter.on('latency', (ms) => {
-      handle.lastLatency = ms
-    })
-    appEmitter.on('response', () => {
-      handle.requestCount++
-    })
+    appEmitter.on('connect', () => info.status = 'connected')
+    appEmitter.on('disconnect', () => info.status = 'disconnected')
+    appEmitter.on('connect_error', () => info.status = 'error')
+    appEmitter.on('latency', (ms) => handle.lastLatency = ms)
+    appEmitter.on('response', () => handle.requestCount++)
 
     const proxy = await createProxy(profileConfig, appEmitter)
     handle.disconnect = proxy.disconnect
@@ -201,7 +174,7 @@ export class DaemonServer {
       })
     })
 
-    this.#logger.info(`Tunnel started: ${req.profileName} → ${req.proxyURL}`)
+    this.#daemonServer.logger.info(`Tunnel started: ${req.profileName} → ${req.proxyURL}`)
   }
 
   async #restoreFromDump(): Promise<void> {
@@ -216,12 +189,12 @@ export class DaemonServer {
       const tunnels = JSON.parse(data) as TunnelDump
       for (const tunnel of tunnels) {
         await this.#startTunnel(tunnel).catch(e => {
-          this.#logger.error(`Failed to restore tunnel "${tunnel.profileName}": ${e instanceof Error ? e.message : String(e)}`)
+          this.#daemonServer.logger.error(`Failed to restore tunnel "${tunnel.profileName}": ${e instanceof Error ? e.message : String(e)}`)
         })
       }
-      this.#logger.info(`Restored ${tunnels.length} tunnel(s) from dump`)
+      this.#daemonServer.logger.info(`Restored ${tunnels.length} tunnel(s) from dump`)
     } catch (e) {
-      this.#logger.error(`Failed to parse restart dump: ${e instanceof Error ? e.message : String(e)}`)
+      this.#daemonServer.logger.error(`Failed to parse restart dump: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -241,24 +214,28 @@ export class DaemonServer {
     }
   }
 
-  #handleListRequests(req: Extract<DaemonRequest, { type: 'list-requests' }>, socket: net.Socket): void {
+  #handleListRequests(req: Extract<DaemonRequest, {
+    type: 'list-requests'
+  }>, socket: SocketWrapper<DaemonResponse>): void {
     const buf = this.#replayBuffers.get(req.profileName)
-    if (!buf) return this.#respond(socket, {type: 'request-list', requests: []})
-    this.#respond(socket, {type: 'request-list', requests: buf.getAll(req.limit)})
+    if (!buf) return socket.write({type: 'request-list', requests: []})
+    socket.write({type: 'request-list', requests: buf.getAll(req.limit)})
   }
 
-  async #handleReplay(req: Extract<DaemonRequest, { type: 'replay' }>, socket: net.Socket): Promise<void> {
+  async #handleReplay(req: Extract<DaemonRequest, {
+    type: 'replay'
+  }>, socket: SocketWrapper<DaemonResponse>): Promise<void> {
     const handle = this.#tunnels.get(req.profileName)
     const buf = this.#replayBuffers.get(req.profileName)
     if (!handle || !buf) {
-      return this.#respond(socket, {type: 'error', message: `No active tunnel for profile "${req.profileName}"`})
+      return socket.write({type: 'error', message: `No active tunnel for profile "${req.profileName}"`})
     }
     const stored = buf.getById(req.requestId)
     if (!stored) {
-      return this.#respond(socket, {type: 'error', message: `Request not found: ${req.requestId}`})
+      return socket.write({type: 'error', message: `Request not found: ${req.requestId}`})
     }
     if (stored.bodyUnavailable) {
-      return this.#respond(socket, {type: 'error', message: 'Cannot replay: body not available after restart'})
+      return socket.write({type: 'error', message: 'Cannot replay: body not available after restart'})
     }
     const {target} = handle.startRequest
     const start = Date.now()
@@ -297,9 +274,9 @@ export class DaemonServer {
         replayOf: stored.id,
         response: result,
       })
-      this.#respond(socket, {type: 'replay-done', requestId: req.requestId, replayId, ...result})
+      socket.write({type: 'replay-done', requestId: req.requestId, replayId, ...result})
     } catch (e) {
-      this.#respond(socket, {type: 'error', message: e instanceof Error ? e.message : String(e)})
+      socket.write({type: 'error', message: e instanceof Error ? e.message : String(e)})
     }
   }
 
@@ -315,24 +292,22 @@ export class DaemonServer {
     }
   }
 
-  #handleAttach(req: Extract<DaemonRequest, { type: 'attach' }>, socket: net.Socket): void {
+  #handleAttach(req: Extract<DaemonRequest, { type: 'attach' }>, socket: SocketWrapper<DaemonResponse>): void {
     const handle = this.#tunnels.get(req.profileName)
     if (!handle) {
-      return this.#respond(socket, {type: 'error', message: `No tunnel running for profile "${req.profileName}"`})
+      return socket.write({type: 'error', message: `No tunnel running for profile "${req.profileName}"`})
     }
 
-    socket.write(JSON.stringify({
+    socket.write({
       type: 'attach-ok',
       profileName: req.profileName,
       proxyURL: handle.info.proxyURL,
       status: handle.info.status,
       requestCount: handle.requestCount,
       ...(handle.lastLatency !== undefined && {lastLatency: handle.lastLatency}),
-    } satisfies DaemonResponse) + '\n')
+    })
 
-    const send = (msg: EventMessage) => {
-      if (!socket.destroyed) socket.write(JSON.stringify(msg) + '\n')
-    }
+    const send = (msg: EventMessage) => socket.write(msg)
 
     const {appEmitter} = handle
 
@@ -361,40 +336,29 @@ export class DaemonServer {
     })
   }
 
-  #handleStop(req: Extract<DaemonRequest, { type: 'stop' }>, socket: net.Socket): void {
+  #handleStop(req: Extract<DaemonRequest, { type: 'stop' }>, socket: SocketWrapper<DaemonResponse>): void {
     const handle = this.#tunnels.get(req.profileName)
     if (!handle) {
-      return this.#respond(socket, {type: 'error', message: `No tunnel running for profile "${req.profileName}"`})
+      return socket.write({type: 'error', message: `No tunnel running for profile "${req.profileName}"`})
     }
     handle.disconnect()
     this.#tunnels.delete(req.profileName)
-    this.#logger.info(`Tunnel stopped: ${req.profileName}`)
-    this.#respond(socket, {type: 'stopped', profileName: req.profileName})
+    this.#daemonServer.logger.info(`Tunnel stopped: ${req.profileName}`)
+    socket.write({type: 'stopped', profileName: req.profileName})
   }
 
-  #handleList(socket: net.Socket): void {
+  #handleList(_req: DaemonRequest, socket: SocketWrapper<DaemonResponse>): void {
     const tunnels = [...this.#tunnels.values()].map(h => h.info)
-    this.#respond(socket, {type: 'list', tunnels})
+    socket.write({type: 'list', tunnels})
   }
 
-  #handleDump(socket: net.Socket): void {
+  #handleDump(_req: DaemonRequest, socket: SocketWrapper<DaemonResponse>): void {
     const tunnels = [...this.#tunnels.values()].map(h => h.startRequest)
-    this.#respond(socket, {type: 'dump', tunnels})
-  }
-
-  #respond(socket: net.Socket, response: DaemonResponse): void {
-    socket.write(JSON.stringify(response) + '\n')
+    socket.write({type: 'dump', tunnels})
   }
 
   #shutdown(): void {
-    this.#logger.info('Daemon shutting down')
     for (const handle of this.#tunnels.values()) handle.disconnect()
-    this.#server?.close()
-    try {
-      unlinkSync(DAEMON_SOCKET_PATH)
-    } catch { /* already gone */
-    }
     this.#persistReplayMeta()
-    process.exit(0)
   }
 }
