@@ -8,7 +8,6 @@
 - `resolveDaemonFile` from `@tunli/daemon` replaces the manual `import.meta.url` path resolution
 - All callsites migrated from `new DaemonClient().send(…)` / `DaemonClient.isRunning()` to `daemonClient().send(…)` / `daemonClient().isRunning()`
 - `DaemonServer` delegates socket server lifecycle to `@tunli/daemon`
-- Added `src/utils/launcher.ts` with generic `proxyChildProcess` and `downloadBinary` utilities for reuse in other packages
 
 ## [0.7.0] - 2026-03-27
 
