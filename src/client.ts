@@ -6,6 +6,7 @@ process.on('warning', (w: Error & { code?: string }) => {
   if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`)
 })
 
+import {existsSync} from "node:fs";
 import {readJsonFile} from "#core/FS/utils";
 import {Option, type ParseResult, program} from '#commander/index';
 import type {Context} from "#types/types";
@@ -58,6 +59,22 @@ const ctx: Context = {
     debug: console.debug,
     verbose: console.debug,
   }
+}
+// Sync local config registry: remove stale paths, register current local if missing
+let localConfigsDirty = false
+globalConf.localConfigs
+  .filter(p => !existsSync(p))
+  .forEach(p => {
+    globalConf.unregisterLocalConfig(p);
+    localConfigsDirty = true
+  })
+
+if (FOUND_LOCAL_CONFIG_FILEPATH && !globalConf.localConfigs.includes(FOUND_LOCAL_CONFIG_FILEPATH)) {
+  globalConf.registerLocalConfig(FOUND_LOCAL_CONFIG_FILEPATH)
+  localConfigsDirty = true
+}
+if (localConfigsDirty) {
+  globalConf.save()
 }
 
 program

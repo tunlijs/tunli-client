@@ -6,6 +6,7 @@
 - Running `tunli init` now registers the created config path in the global config (`~/.tunli/config.json`) under `localConfigs`
 - Global config gains `localConfigs: string[]` — a registry of all known local config paths across projects
 - `tunli init` prints the path of the created config; `--force` logs the removed file before recreating
+- On every startup, the registry is synced automatically: stale paths (deleted configs) are pruned, and the current local config is registered if not already present (migration for existing setups)
 
 ### Refactor: daemon extraction to `@tunli/daemon`
 - `DaemonClient` class replaced by `daemonClient()` singleton function and `attachTunnel()` free function
