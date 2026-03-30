@@ -44,18 +44,20 @@ export class ParsedConfig {
     servers: Record<string, ParsedServerConfig>
     activeServer: string | undefined
     defaultProfile: string | undefined
+    localConfigs: string[]
   } = {
     profiles: {},
     servers: {},
     activeServer: undefined,
-    defaultProfile: DEFAULT_PROFILE_NAME
+    defaultProfile: DEFAULT_PROFILE_NAME,
+    localConfigs: []
   }
 
   readonly #filepath?: string | undefined
 
   constructor(data: Record<string, unknown>, filepath?: string) {
 
-    const {profiles, servers, activeServer, defaultProfile} = data ?? {}
+    const {profiles, servers, activeServer, defaultProfile, localConfigs} = data ?? {}
     this.#filepath = filepath
     for (const [name, profile] of Object.entries(profiles ?? {})) {
       this.#data.profiles[name] = new ParsedProfileConfig(this, name, profile ?? {}, true)
@@ -70,6 +72,10 @@ export class ParsedConfig {
 
     if (defaultProfile) {
       this.#data.defaultProfile = defaultProfile as string
+    }
+
+    if (Array.isArray(localConfigs)) {
+      this.#data.localConfigs = localConfigs.filter((v): v is string => typeof v === 'string')
     }
   }
 
@@ -99,6 +105,20 @@ export class ParsedConfig {
 
   set defaultProfile(defaultProfile: string) {
     this.#data.defaultProfile = defaultProfile
+  }
+
+  get localConfigs(): string[] {
+    return this.#data.localConfigs
+  }
+
+  registerLocalConfig(path: string): void {
+    if (!this.#data.localConfigs.includes(path)) {
+      this.#data.localConfigs.push(path)
+    }
+  }
+
+  unregisterLocalConfig(path: string): void {
+    this.#data.localConfigs = this.#data.localConfigs.filter(p => p !== path)
   }
 
   get profiles(): ParsedProfileConfig[] {

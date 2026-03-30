@@ -2,6 +2,7 @@ import {Command, InvalidArgumentError, Option, type ParseResult} from "#commande
 import type {Context} from "#types/types";
 import {FOUND_LOCAL_CONFIG_FILEPATH, GLOBAL_CONFIG_FILEPATH, LOCAL_CONFIG_FILEPATH} from "#lib/defs";
 import {removeFile} from "#core/FS/utils";
+import {formatPath} from "#output-formats/formatPath";
 
 export const createCommandInit = (ctx: Context, _program: Command) => {
   type Options = {
@@ -22,11 +23,12 @@ export const createCommandInit = (ctx: Context, _program: Command) => {
     if (ctx.config.local) {
       if (force) {
         if (FOUND_LOCAL_CONFIG_FILEPATH) {
+          ctx.logger.info(`Removed existing config at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH)}`)
           removeFile(FOUND_LOCAL_CONFIG_FILEPATH)
         }
 
       } else {
-        ctx.logger.error(`Local config already exists at ${FOUND_LOCAL_CONFIG_FILEPATH}`)
+        ctx.logger.error(`Local config already exists at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH!)}`)
         ctx.logger.error('Use --force to reinitialize.')
         ctx.exit(1)
       }
@@ -37,6 +39,9 @@ export const createCommandInit = (ctx: Context, _program: Command) => {
     }
 
     ctx.config.createLocalConfig()
+    ctx.config.global.registerLocalConfig(LOCAL_CONFIG_FILEPATH)
+    ctx.config.global.save()
+    ctx.logger.info(`Initialized empty tunli config at ${formatPath(LOCAL_CONFIG_FILEPATH)}`)
   })
 
   cmd.extendUsage()
