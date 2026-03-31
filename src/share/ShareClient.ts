@@ -80,6 +80,8 @@ export const createShareClient = (
       const closeClient = () => {
         if (sessionId) socket.emit('share-end', {sessionId})
         activeTcpClient = null
+        sessionId = null
+        socket.emit('share-connect', {targetPublicKey, publicKey: encodePublicKey(identity.publicKeyRaw)})
       }
 
       client.on('end', closeClient)
@@ -96,6 +98,8 @@ export const createShareClient = (
   socket.on('share-end', () => {
     activeTcpClient?.end()
     activeTcpClient = null
+    sessionId = null
+    socket.emit('share-connect', {targetPublicKey, publicKey: encodePublicKey(identity.publicKeyRaw)})
     onEvent({type: 'disconnected'})
   })
 

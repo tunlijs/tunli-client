@@ -4,8 +4,6 @@
 
 - **Node.js 22 support** — CI currently runs on Node 25 only; target is Node >= 22
 
-- **Shared daemon package** — audit how much of the daemon logic (Unix socket, protocol, process management) overlaps between client and server; extract into a shared library if the overlap justifies it
-
 ### High priority
 
 - **Request editor** (web portal) — edit method, path, headers and body of a captured request before replaying it. Intentionally scoped to the local web portal where an editor UI is practical; too unwieldy for the TUI.

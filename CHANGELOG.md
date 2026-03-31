@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fix: `tunli share` / `tunli connect` session stability
+- After a session ends (local TCP close or remote `share-end`), the client now resets the session ID and re-emits `share-connect` to obtain a fresh reservation — subsequent connections no longer fail with a stale session ID
+
 ### `tunli init`: local config registry
 - Running `tunli init` now registers the created config path in the global config (`~/.tunli/config.json`) under `localConfigs`
 - Global config gains `localConfigs: string[]` — a registry of all known local config paths across projects
