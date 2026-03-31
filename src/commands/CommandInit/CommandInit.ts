@@ -14,7 +14,7 @@ export const createCommandInit = (ctx: Context, _program: Command) => {
 
   cmd.action(({options}: ParseResult) => {
     if (!ctx.config.global.exists()) {
-      ctx.logger.warn('No account found. Run `tunli register` to get started.')
+      ctx.stdOut('No account found. Run `tunli register` to get started.')
     }
 
     const opt = options as Options
@@ -23,13 +23,13 @@ export const createCommandInit = (ctx: Context, _program: Command) => {
     if (ctx.config.local) {
       if (force) {
         if (FOUND_LOCAL_CONFIG_FILEPATH) {
-          ctx.logger.info(`Removed existing config at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH)}`)
+          ctx.stdOut(`Removed existing config at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH)}`)
           removeFile(FOUND_LOCAL_CONFIG_FILEPATH)
         }
 
       } else {
-        ctx.logger.error(`Local config already exists at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH!)}`)
-        ctx.logger.error('Use --force to reinitialize.')
+        ctx.stdErr(`Local config already exists at ${formatPath(FOUND_LOCAL_CONFIG_FILEPATH!)}`)
+        ctx.stdErr('Use --force to reinitialize.')
         ctx.exit(1)
       }
     }
@@ -41,7 +41,7 @@ export const createCommandInit = (ctx: Context, _program: Command) => {
     ctx.config.createLocalConfig()
     ctx.config.global.registerLocalConfig(LOCAL_CONFIG_FILEPATH)
     ctx.config.global.save()
-    ctx.logger.info(`Initialized empty tunli config at ${formatPath(LOCAL_CONFIG_FILEPATH)}`)
+    ctx.stdOut(`Initialized empty tunli config at ${formatPath(LOCAL_CONFIG_FILEPATH)}`)
   })
 
   cmd.extendUsage()

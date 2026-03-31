@@ -93,7 +93,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
       if (!profileName) {
         const res = await daemonClient().send({type: 'list'}).catch(() => null)
         if (!res || res.type !== 'list' || res.tunnels.length === 0) {
-          ctx.logger.error('No active tunnels.')
+          ctx.stdErr('No active tunnels.')
           return ctx.exit(1)
         }
         if (res.tunnels.length === 1) {
@@ -109,11 +109,11 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
 
       const listRes = await daemonClient().send({type: 'list-requests', profileName}).catch(() => null)
       if (!listRes || listRes.type !== 'request-list') {
-        ctx.logger.error('Failed to fetch request history.')
+        ctx.stdErr('Failed to fetch request history.')
         return ctx.exit(1)
       }
       if (listRes.requests.length === 0) {
-        ctx.logger.info('No requests captured yet for this tunnel.')
+        ctx.stdOut('No requests captured yet for this tunnel.')
         return
       }
 
@@ -122,7 +122,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
       if (opt.id) {
         target = listRes.requests.find(r => r.id === opt.id) ?? null
         if (!target) {
-          ctx.logger.error(`Request not found: ${opt.id}`)
+          ctx.stdErr(`Request not found: ${opt.id}`)
           return ctx.exit(1)
         }
       } else if (opt.last) {
@@ -134,23 +134,23 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
       if (!target) return
 
       if (target.bodyUnavailable) {
-        ctx.logger.error('Cannot replay: body not available (captured before last restart).')
+        ctx.stdErr('Cannot replay: body not available (captured before last restart).')
         return ctx.exit(1)
       }
 
-      ctx.logger.info(`Replaying ${target.method} ${target.path}…`)
+      ctx.stdOut(`Replaying ${target.method} ${target.path}…`)
       const res = await daemonClient().send({type: 'replay', profileName, requestId: target.id}).catch(e => {
-        ctx.logger.error(e instanceof Error ? e.message : String(e))
+        ctx.stdErr(e instanceof Error ? e.message : String(e))
         return null
       })
       if (!res) return ctx.exit(1)
       if (res.type === 'error') {
-        ctx.logger.error(res.message)
+        ctx.stdErr(res.message)
         return ctx.exit(1)
       }
       if (res.type === 'replay-done') {
         const color = res.status >= 500 ? chalk.red : res.status >= 400 ? chalk.yellow : chalk.green
-        ctx.logger.info(`→ ${color(String(res.status))}  ${res.durationMs}ms`)
+        ctx.stdOut(`→ ${color(String(res.status))}  ${res.durationMs}ms`)
       }
     })
 }

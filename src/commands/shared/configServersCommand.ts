@@ -9,14 +9,14 @@ export const configServersCommand = (ctx: Context, cmdName = 'relays') => {
     const servers = ctx.config.global.servers
 
     if (!servers.length) {
-      ctx.logger.info('No relay servers registered. Run `tunli register` to get started.')
+      ctx.stdOut('No relay servers registered. Run `tunli register` to get started.')
       return
     }
 
     const active = ctx.config.global.activeServer
     for (const {name, url} of servers) {
       const marker = name === active ? '* ' : '  '
-      ctx.logger.info(`${marker}${name.padEnd(16)} ${url}`)
+      ctx.stdOut(`${marker}${name.padEnd(16)} ${url}`)
     }
   })
 

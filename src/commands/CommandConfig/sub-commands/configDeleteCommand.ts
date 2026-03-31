@@ -17,11 +17,11 @@ export const configDeleteCommand = (ctx: Context) => {
       const ok = options.force || await confirm(`Remove config file ${path} (${config.mode})? [y/N] `)
 
       if (!ok) {
-        ctx.logger.info('Aborted.')
+        ctx.stdOut('Aborted.')
         return ctx.exit(0)
       }
 
       config.delete()
-      ctx.logger.info(`Removed config file ${path} (${config.mode})`)
+      ctx.stdOut(`Removed config file ${path} (${config.mode})`)
     })
 }

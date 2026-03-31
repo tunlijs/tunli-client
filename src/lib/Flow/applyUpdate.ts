@@ -1,41 +1,41 @@
 import {renameSync, writeFileSync} from 'node:fs'
 import {RESTART_DUMP_FILEPATH, TUNLI_BIN_NEW_PATH, TUNLI_BIN_PATH} from '#lib/defs'
 import {daemonClient} from '#daemon/DaemonClient'
-import {logDebug} from "#logger/logger"
+import type {Logger} from "../../types/types.js";
 
-export const dumpAndStopDaemon = async (): Promise<void> => {
+export const dumpAndStopDaemon = async ({logger}: { logger: Logger }): Promise<void> => {
   if (!await daemonClient().isRunning()) return
 
-  logDebug('Daemon is active. Requesting tunnel dump...')
+  logger.debug('Daemon is active. Requesting tunnel dump...')
   const response = await daemonClient().send({type: 'dump'})
 
   if (response.type === 'dump' && response.tunnels.length > 0) {
-    logDebug(`Dump received. Saving ${response.tunnels.length} tunnels to cache.`)
+    logger.debug(`Dump received. Saving ${response.tunnels.length} tunnels to cache.`)
     writeFileSync(RESTART_DUMP_FILEPATH, JSON.stringify(response.tunnels))
   } else {
-    logDebug('Dump received, but no active tunnels found.')
+    logger.debug('Dump received, but no active tunnels found.')
   }
 
-  logDebug('Stopping daemon...')
+  logger.debug('Stopping daemon...')
   await daemonClient().stop()
-  logDebug('Daemon stopped successfully.')
+  logger.debug('Daemon stopped successfully.')
 }
 
-export const applyBinary = (): void => {
-  logDebug(`Replacing binary: ${TUNLI_BIN_NEW_PATH} -> ${TUNLI_BIN_PATH}`)
+export const applyBinary = ({logger}: { logger: Logger }): void => {
+  logger.debug(`Replacing binary: ${TUNLI_BIN_NEW_PATH} -> ${TUNLI_BIN_PATH}`)
   try {
     renameSync(TUNLI_BIN_NEW_PATH, TUNLI_BIN_PATH)
-    logDebug('Update applied: Binary swapped successfully.')
+    logger.debug('Update applied: Binary swapped successfully.')
   } catch (error: any) {
-    logDebug(`Update failed during rename: ${error?.message ? error.message : String(error)}`)
+    logger.debug(`Update failed during rename: ${error?.message ? error.message : String(error)}`)
     throw error
   }
 }
 
 // Used by the launcher on Ctrl+R restart: dump+stop daemon, then swap binary.
 // The new process will restore tunnels from the dump on startup.
-export const applyUpdate = async (): Promise<void> => {
-  logDebug('Update process: Checking daemon status...')
-  await dumpAndStopDaemon()
-  applyBinary()
+export const applyUpdate = async ({logger}: { logger: Logger }): Promise<void> => {
+  logger.debug('Update process: Checking daemon status...')
+  await dumpAndStopDaemon({logger})
+  applyBinary({logger})
 }

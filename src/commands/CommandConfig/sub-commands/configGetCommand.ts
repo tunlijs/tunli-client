@@ -11,15 +11,15 @@ const createGetSubCommand = (
 ): Command => new Command(name).description(description).
 action(({options}: ParseResult<UnknownRecord, SharedOptions>) => {
   const config = resolveConfig(ctx, options)
-  if (name === 'host') ctx.logger.info(config.getHost() ?? '-')
-  if (name === 'port') ctx.logger.info((config.getPort() ?? '-').toString())
+  if (name === 'host') ctx.stdOut(config.getHost() ?? '-')
+  if (name === 'port') ctx.stdOut((config.getPort() ?? '-').toString())
 })
 
 const configGetCommand = (ctx: Context) => {
   return new Command('get')
     .action(({options}: ParseResult<UnknownRecord, SharedOptions>) => {
       const config = resolveConfig(ctx, options)
-      ctx.logger.info(formatProfile(config))
+      ctx.stdOut(formatProfile(config))
     })
     .description('Show configuration values')
     .addCommand(createGetSubCommand(ctx, 'host', 'Show the configured host'))

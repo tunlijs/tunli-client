@@ -7,7 +7,7 @@ import {assertHost, assertPort, assertProtocol} from "#utils/assertFunctions";
 
 function validateServerConfig(ctx: Context, config: ParsedServerConfig): ServerConfig {
   if (!config.exists() || !config.authToken || !config.url) {
-    ctx.logger.error(`Not registered with relay "${config.name}". Run \`tunli register\` to get started.`)
+    ctx.stdErr(`Not registered with relay "${config.name}". Run \`tunli register\` to get started.`)
     return ctx.exit(1)
   }
 
@@ -26,19 +26,19 @@ function validateTarget(ctx: Context, config: ParsedProfileConfig): TargetConfig
   try {
     assertProtocol(protocol)
   } catch (e) {
-    ctx.logger.error(e instanceof Error ? e.message : String(e))
+    ctx.stdErr(e instanceof Error ? e.message : String(e))
     return ctx.exit(1)
   }
   try {
     assertHost(host)
   } catch (e) {
-    ctx.logger.error(e instanceof Error ? e.message : String(e))
+    ctx.stdErr(e instanceof Error ? e.message : String(e))
     return ctx.exit(1)
   }
   try {
     assertPort(port)
   } catch (e) {
-    ctx.logger.error(e instanceof Error ? e.message : String(e))
+    ctx.stdErr(e instanceof Error ? e.message : String(e))
     return ctx.exit(1)
   }
 
@@ -59,14 +59,14 @@ export const validateProfileConfig = async (ctx: Context, config: ParsedProfileC
   if (!config.proxy) {
     const result = await apiClient.registerProxy(target, profileName)
     if (result.error) {
-      ctx.logger.error(`Failed to create proxy: ${result.error.message}`)
+      ctx.stdErr(`Failed to create proxy: ${result.error.message}`)
       return ctx.exit(1)
     }
     config.proxy = result.data
   } else {
     const result = await apiClient.renewProxy(target, profileName, config.proxy.proxyIdent)
     if (result.error || !result.data) {
-      ctx.logger.error(`Failed to renew proxy registration: ${result.error?.message ?? 'no data returned'}`)
+      ctx.stdErr(`Failed to renew proxy registration: ${result.error?.message ?? 'no data returned'}`)
       return ctx.exit(1)
     }
   }

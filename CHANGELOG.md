@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Refactor: unified logging system
+- New `LoggerAbstract` base class with level filtering and pluggable write function
+- `FileLogger` (daemon, writes daily log files) and `StdOutLogger` (CLI, writes to console) extend `LoggerAbstract`
+- `ComputedLogger`: factory that resolves log level from env (`TUNLI_LOG_LEVEL`) → dev mode → global config, creates `FileLogger` always and adds `StdOutLogger` when `process.stdout.isTTY` (daemon foreground mode)
+- `logLevel` added to global config (default `'info'`); valid values: `error`, `warn`, `info`, `debug`, `verbose`
+- `IS_DEV_ENV` in `defs.ts` — defaults log level to `debug` in development
+- Logger injected via DI throughout: `createShareHost`, `createShareClient`, `applyUpdate`, `proxyChildProcess`, `DaemonServer` all accept `Logger` as parameter
+- `ctx.stdOut` / `ctx.stdErr` added to `Context` for user-facing CLI output, replacing `ctx.logger.info/warn/error` in all commands
+- `logger.ts` replaced by the new class hierarchy; `debugLogStdOut` removed
+
 ### Fix: `tunli share` / `tunli connect` session stability
 - After a session ends (local TCP close or remote `share-end`), the client now resets the session ID and re-emits `share-connect` to obtain a fresh reservation — subsequent connections no longer fail with a stale session ID
 

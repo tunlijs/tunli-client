@@ -24,7 +24,7 @@ const createSetSubCommand = <T>(
       config.update({
         [name]: args[name] as T
       }).save()
-      ctx.logger.info(formatSaveResult(config))
+      ctx.stdOut(formatSaveResult(config))
     })
 }
 
@@ -68,7 +68,7 @@ const createSetCidrSubCommand = (
             ip.network().addressWithCidr
           ))]
         }).save()
-        ctx.logger.info(formatSaveResult(config))
+        ctx.stdOut(formatSaveResult(config))
         return
       }
 
@@ -90,7 +90,7 @@ const createSetCidrSubCommand = (
       ).map(ip => ip.network().addressWithCidr)
 
       config.update({[name]: [...new Set(filtered)]}).save()
-      ctx.logger.info(formatSaveResult(config))
+      ctx.stdOut(formatSaveResult(config))
     })
 
   return cmd

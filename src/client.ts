@@ -6,6 +6,7 @@ process.on('warning', (w: Error & { code?: string }) => {
   if (w.code !== 'DEP0169') process.stderr.write(`Warning: ${w.message}\n`)
 })
 
+import {createComputedLogger} from "./logger/ComputedLogger.js";
 import {existsSync} from "node:fs";
 import {readJsonFile} from "#core/FS/utils";
 import {Option, type ParseResult, program} from '#commander/index';
@@ -40,6 +41,7 @@ import {readPackageJson} from "#package-json/packageJson";
 import {daemonClient} from "#daemon/DaemonClient";
 
 const globalConf = new ParsedGlobalConfig(readJsonFile(GLOBAL_CONFIG_FILEPATH), GLOBAL_CONFIG_FILEPATH)
+const logger = createComputedLogger(globalConf)
 const localConf = FOUND_LOCAL_CONFIG_FILEPATH ? new ParsedLocalConfig(readJsonFile(FOUND_LOCAL_CONFIG_FILEPATH), FOUND_LOCAL_CONFIG_FILEPATH) : undefined
 const packageJson = readPackageJson()
 const ctx: Context = {
@@ -52,13 +54,9 @@ const ctx: Context = {
     process.exit(code ?? 0)
   },
   apiClient: new ApiClient(globalConf, localConf),
-  logger: {
-    info: console.info,
-    error: console.error,
-    warn: console.warn,
-    debug: console.debug,
-    verbose: console.debug,
-  }
+  stdOut: (message: string) => process.stdout.write(`${message}\n`),
+  stdErr: (message: string) => process.stderr.write(`${message}\n`),
+  logger
 }
 // Sync local config registry: remove stale paths, register current local if missing
 let localConfigsDirty = false
@@ -109,10 +107,10 @@ program.addCommand(createCommandReplay(ctx, program))
 
 program.action(({options}: ParseResult) => {
   if (options.version) {
-    ctx.logger.info(`tunli: ${packageJson?.version}`)
+    ctx.stdOut(`tunli: ${packageJson?.version}`)
     ctx.exit(0)
   } else {
-    ctx.logger.error('Error: Command "tunli": missing required argument, option or subcommand')
+    ctx.stdErr('Error: Command "tunli": missing required argument, option or subcommand')
     ctx.exit(1)
   }
 })
@@ -124,7 +122,7 @@ if (!isHelpOrVersion && !isDaemonCommand && packageJson?.version) {
   const res = await daemonClient().send({type: 'version'}).catch(() => null)
 
   if (res?.type === 'version' && res.version !== packageJson.version) {
-    ctx.logger.error(
+    ctx.stdErr(
       `Daemon version mismatch: binary is ${packageJson.version}, daemon is ${res.version}.\n` +
       `Run \`tunli daemon restart\` to apply the update.`
     )

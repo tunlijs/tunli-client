@@ -12,7 +12,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
     .addArgument(new Argument('profile', 'Profile name to attach to'))
     .action(async ({args}) => {
       if (!await daemonClient().isRunning()) {
-        ctx.logger.error('No daemon running. Start a tunnel first with `tunli http <port>`.')
+        ctx.stdErr('No daemon running. Start a tunnel first with `tunli http <port>`.')
         return ctx.exit(1)
       }
 
@@ -20,7 +20,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       if (listResult.type !== 'list') return ctx.exit(1)
 
       if (listResult.tunnels.length === 0) {
-        ctx.logger.error('No active tunnels.')
+        ctx.stdErr('No active tunnels.')
         return ctx.exit(1)
       }
 
@@ -38,7 +38,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
 
       const tunnelInfo = listResult.tunnels.find(t => t.profileName === profileName)
       if (!tunnelInfo) {
-        ctx.logger.error(`No tunnel running for profile "${profileName}".`)
+        ctx.stdErr(`No tunnel running for profile "${profileName}".`)
         return ctx.exit(1)
       }
 
@@ -93,7 +93,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       attachState.disconnect = disconnect
 
       const attachResult = await attachPromise.catch((e: Error) => {
-        ctx.logger.error(e.message)
+        ctx.stdErr(e.message)
         ctx.exit(1)
       })
 

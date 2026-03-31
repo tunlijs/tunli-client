@@ -24,7 +24,7 @@ export const createCommandAuth = (ctx: Context, _program: Command) => {
       .setUrl(relayUrl)
       .setAuthToken(token)
       .save()
-    ctx.logger.info('Auth token saved.')
+    ctx.stdOut('Auth token saved.')
   })
 
   cmd.extendUsage()

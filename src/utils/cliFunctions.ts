@@ -1,7 +1,7 @@
 import {argv, stdout} from 'node:process'
 import EventEmitter from "node:events"
 import {spawn} from "child_process"
-import {logDebug} from "#logger/logger"
+import type {Logger} from "#types/types";
 
 export const setCursorVisibility = (visible: boolean) => {
   if (visible) {
@@ -23,6 +23,7 @@ interface ProxyOptions {
 }
 
 export const proxyChildProcess = (
+  logger: Logger,
   pathToExecutable: string,
   proxyArguments: string[] = argv.slice(2),
   options: ProxyOptions = {}
@@ -33,32 +34,32 @@ export const proxyChildProcess = (
 
   const eventEmitter = new EventEmitter()
   const createSpawnProcessPromise = () => {
-    logDebug('Lifecycle: Initializing child process spawn...')
+    logger.debug('Lifecycle: Initializing child process spawn...')
     const onError = (error: Error) => {
-      logDebug(`Lifecycle: Spawn failed or process encountered an error: ${error.message}`)
+      logger.debug(`Lifecycle: Spawn failed or process encountered an error: ${error.message}`)
       eventEmitter.emit('close', 1)
     }
 
     const onClose = (code: number | null) => {
       if (code === null) {
-        logDebug('Lifecycle: Child process was terminated externally (SIGKILL/SIGTERM).')
+        logger.debug('Lifecycle: Child process was terminated externally (SIGKILL/SIGTERM).')
         clearTerminal()
       } else {
-        logDebug(`Lifecycle: Child process exited with code ${code}`)
+        logger.debug(`Lifecycle: Child process exited with code ${code}`)
       }
       eventEmitter.emit('close', code)
     }
 
     const onMessage = (message: string) => {
-      logDebug(`Received IPC message: ${message}`)
+      logger.debug(`Received IPC message: ${message}`)
 
       if (message === 'restart') {
         child.off('close', onClose)
         child.kill()
         const doRestart = async () => {
-          logDebug('Lifecycle: Child process termination signal sent. Preparing restart hooks...')
+          logger.debug('Lifecycle: Child process termination signal sent. Preparing restart hooks...')
           await options.onBeforeRestart?.()
-          logDebug('Lifecycle: Restart hooks completed. Emitting spawn event for new process.')
+          logger.debug('Lifecycle: Restart hooks completed. Emitting spawn event for new process.')
           eventEmitter.emit('spawn')
         }
         void doRestart()
@@ -74,7 +75,7 @@ export const proxyChildProcess = (
       .on('message', onMessage)
 
     if (child.pid) {
-      logDebug(`Lifecycle: Child process successfully started (PID: ${child.pid})`)
+      logger.debug(`Lifecycle: Child process successfully started (PID: ${child.pid})`)
     }
   }
 

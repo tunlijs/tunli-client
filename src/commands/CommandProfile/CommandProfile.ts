@@ -18,10 +18,10 @@ export const configProfilesCommand = (
     const config = resolveConfig(ctx, options, 'config-only')
     const profiles = config.profiles
     if (!profiles.length) {
-      ctx.logger.info('No profiles found. Run `tunli http 3000 --save <name>` to create one.')
+      ctx.stdOut('No profiles found. Run `tunli http 3000 --save <name>` to create one.')
       return
     }
-    ctx.logger.info(formatProfilesShort(config))
+    ctx.stdOut(formatProfilesShort(config))
   })
 
   return cmd
@@ -39,20 +39,20 @@ export const createCommandProfile = (ctx: Context, _program: Command) => {
       }, SharedOptions & {force: boolean}>) => {
         const config = resolveConfig(ctx, options, 'config-only').profile(args.name)
         if (!config.exists()) {
-          ctx.logger.error(`Profile "${args.name}" not found.`)
+          ctx.stdErr(`Profile "${args.name}" not found.`)
           return ctx.exit(1)
         }
         const ok = options.force || await confirm(`Remove profile "${config.name}" from ${config.filepath} (${config.locationType})? [y/N] `)
 
         if (!ok) {
-          ctx.logger.info('Aborted.')
+          ctx.stdOut('Aborted.')
           return ctx.exit(0)
         }
 
         config.delete()
         config.save()
-        ctx.logger.info(formatSaveResult(config))
-        ctx.logger.info(`Profile "${args.name}" deleted`)
+        ctx.stdOut(formatSaveResult(config))
+        ctx.stdOut(`Profile "${args.name}" deleted`)
       }))
     .addCommand(new Command('use').description('Set the default profile')
       .addArgument(new Argument('name', 'Profile name').required()).action(({args, options}: ParseResult<{
@@ -62,12 +62,12 @@ export const createCommandProfile = (ctx: Context, _program: Command) => {
         const config = resolveConfig(ctx, options, 'config-only')
 
         if (!config.profile(name).exists()) {
-          ctx.logger.warn(`Profile "${name}" not found.`)
+          ctx.stdOut(`Profile "${name}" not found.`)
         } else {
           config.defaultProfile = name
           config.save()
-          ctx.logger.info(formatSaveResult(config))
-          ctx.logger.info(`Active profile set to "${name}"`)
+          ctx.stdOut(formatSaveResult(config))
+          ctx.stdOut(`Active profile set to "${name}"`)
         }
       }))
   addSharedOptions(cmd, 'no-profile')

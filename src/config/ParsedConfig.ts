@@ -5,6 +5,9 @@ import {rmSync, writeFileSync} from "fs";
 import {ensureDirectoryExists} from "#core/FS/utils";
 import {DEFAULT_PROFILE_NAME} from "#lib/defs";
 import {TempProfileConfig} from "#config/TempProfileConfig";
+import {type LOG_LEVEL, LoggerAbstract} from "#logger/LoggerAbstract";
+
+const LOG_LEVELS = Object.keys(LoggerAbstract.LEVELS) as LOG_LEVEL[]
 
 export class ParsedConfig {
 
@@ -45,19 +48,21 @@ export class ParsedConfig {
     activeServer: string | undefined
     defaultProfile: string | undefined
     localConfigs: string[]
+    logLevel: LOG_LEVEL
   } = {
     profiles: {},
     servers: {},
     activeServer: undefined,
     defaultProfile: DEFAULT_PROFILE_NAME,
-    localConfigs: []
+    localConfigs: [],
+    logLevel: 'info',
   }
 
   readonly #filepath?: string | undefined
 
   constructor(data: Record<string, unknown>, filepath?: string) {
 
-    const {profiles, servers, activeServer, defaultProfile, localConfigs} = data ?? {}
+    const {profiles, servers, activeServer, defaultProfile, localConfigs, logLevel} = data ?? {}
     this.#filepath = filepath
     for (const [name, profile] of Object.entries(profiles ?? {})) {
       this.#data.profiles[name] = new ParsedProfileConfig(this, name, profile ?? {}, true)
@@ -76,6 +81,10 @@ export class ParsedConfig {
 
     if (Array.isArray(localConfigs)) {
       this.#data.localConfigs = localConfigs.filter((v): v is string => typeof v === 'string')
+    }
+
+    if (LOG_LEVELS.includes(logLevel as LOG_LEVEL)) {
+      this.#data.logLevel = logLevel as LOG_LEVEL
     }
   }
 
@@ -105,6 +114,14 @@ export class ParsedConfig {
 
   set defaultProfile(defaultProfile: string) {
     this.#data.defaultProfile = defaultProfile
+  }
+
+  get logLevel(): LOG_LEVEL {
+    return this.#data.logLevel
+  }
+
+  set logLevel(level: LOG_LEVEL) {
+    this.#data.logLevel = level
   }
 
   get localConfigs(): string[] {

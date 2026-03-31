@@ -10,11 +10,11 @@ export const createCommandServer = (ctx: Context, _program: Command) => {
       const name = args.name as string
       const config = ctx.config.global
       if (!config.server(name).exists()) {
-        ctx.logger.warn(`Relay "${name}" not found. Run \`tunli relay list\` to see available relays.`)
+        ctx.stdOut(`Relay "${name}" not found. Run \`tunli relay list\` to see available relays.`)
       } else {
         config.activeServer = name
         config.save()
-        ctx.logger.info(`Active relay set to "${name}"`)
+        ctx.stdOut(`Active relay set to "${name}"`)
       }
     }))
   cmd.extendUsage()

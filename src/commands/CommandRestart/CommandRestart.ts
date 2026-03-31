@@ -41,7 +41,7 @@ export const createCommandRestart = (ctx: Context, _program: Command) => {
     const validated = await validateProfileConfig(ctx, config)
 
     if (!await daemonClient().isRunning()) {
-      ctx.logger.error('No daemon running. Use `tunli start <profile>` instead.')
+      ctx.stdErr('No daemon running. Use `tunli start <profile>` instead.')
       return ctx.exit(1)
     }
 
@@ -61,12 +61,12 @@ export const createCommandRestart = (ctx: Context, _program: Command) => {
     })
 
     if (result.type === 'error') {
-      ctx.logger.error(result.message)
+      ctx.stdErr(result.message)
       return ctx.exit(1)
     }
 
     if (result.type === 'started') {
-      ctx.logger.info(`Tunnel restarted: ${result.proxyURL}`)
+      ctx.stdOut(`Tunnel restarted: ${result.proxyURL}`)
     }
   })
   return cmd

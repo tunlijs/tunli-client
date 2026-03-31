@@ -25,7 +25,7 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
     const serverConf = ctx.config.global.server(serverName)
 
     if (serverConf.exists() && !force) {
-      ctx.logger.info('Auth token already exists. Use --force to renew.')
+      ctx.stdOut('Auth token already exists. Use --force to renew.')
       return ctx.exit(0)
     }
 
@@ -33,9 +33,9 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
 
     if (error || !data) {
       if (error) {
-        ctx.logger.error(error.message)
+        ctx.stdErr(error.message)
       } else {
-        ctx.logger.error('Registration failed. Please try again later.')
+        ctx.stdErr('Registration failed. Please try again later.')
       }
       return ctx.exit(1)
     }
@@ -49,13 +49,13 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
       .setAuthToken(data)
       .save()
 
-    ctx.logger.info(`Registration successful. Relay: ${relayUrl} (${serverName})`)
+    ctx.stdOut(`Registration successful. Relay: ${relayUrl} (${serverName})`)
 
     const isNew = loadIdentity() === null
     const identity = ensureIdentity()
     if (isNew) {
-      ctx.logger.info(`Identity key generated: ${encodePublicKey(identity.publicKeyRaw)}`)
-      ctx.logger.info(`Fingerprint: ${fingerprint(identity.publicKeyRaw)}`)
+      ctx.stdOut(`Identity key generated: ${encodePublicKey(identity.publicKeyRaw)}`)
+      ctx.stdOut(`Fingerprint: ${fingerprint(identity.publicKeyRaw)}`)
     }
   })
 

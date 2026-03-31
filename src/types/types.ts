@@ -53,6 +53,7 @@ export type Logger = {
   warn(message: string): void
   error(message: string): void
   debug(message: string): void
+  exception(message: unknown): void
   verbose(message: string): void
 }
 
@@ -60,6 +61,8 @@ export type Context = {
   logger: Logger
   exit(code?: number): never
   apiClient: ApiClient
+  stdOut: (message: string) => void
+  stdErr: (message: string) => void
   config: {
     createLocalConfig(): void
     global: ParsedGlobalConfig

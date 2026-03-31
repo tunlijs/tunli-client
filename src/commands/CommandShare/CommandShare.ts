@@ -18,7 +18,7 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
     const serverConf = ctx.config.global.server(serverName)
 
     if (!serverConf.exists() || !serverConf.authToken || !serverConf.url) {
-      ctx.logger.error('Not registered. Run `tunli register` first.')
+      ctx.stdErr('Not registered. Run `tunli register` first.')
       return ctx.exit(1)
     }
 
@@ -27,7 +27,7 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
 
     const connectInfoResult = await apiClient.connectInfo()
     if (connectInfoResult.error) {
-      ctx.logger.error(`Failed to reach relay: ${connectInfoResult.error.message}`)
+      ctx.stdErr(`Failed to reach relay: ${connectInfoResult.error.message}`)
       return ctx.exit(1)
     }
 
@@ -36,14 +36,15 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
     const pubKey = encodePublicKey(identity.publicKeyRaw)
     const fp = fingerprint(identity.publicKeyRaw)
 
-    ctx.logger.info(`Sharing ${host}:${port}`)
-    ctx.logger.info(`Your public key: ${pubKey}`)
-    ctx.logger.info(`Fingerprint:     ${fp}`)
-    ctx.logger.info(`Share this with the other party:`)
-    ctx.logger.info(`  tunli connect ${pubKey}`)
-    ctx.logger.info(`Waiting for connections... (Ctrl+C to stop)`)
+    ctx.stdOut(`Sharing ${host}:${port}`)
+    ctx.stdOut(`Your public key: ${pubKey}`)
+    ctx.stdOut(`Fingerprint:     ${fp}`)
+    ctx.stdOut(`Share this with the other party:`)
+    ctx.stdOut(`  tunli connect ${pubKey}`)
+    ctx.stdOut(`Waiting for connections... (Ctrl+C to stop)`)
 
     const host_ = createShareHost(
+      ctx.logger,
       serverConfig,
       socketUrl,
       capturePath,
@@ -52,13 +53,13 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
       port,
       (event) => {
         if (event.type === 'registered') {
-          ctx.logger.info('Registered with relay.')
+          ctx.stdOut('Registered with relay.')
         } else if (event.type === 'client-connected') {
-          ctx.logger.info(`Client connected:  ${event.publicKey}`)
+          ctx.stdOut(`Client connected:  ${event.publicKey}`)
         } else if (event.type === 'client-disconnected') {
-          ctx.logger.info(`Client disconnected: ${event.publicKey}`)
+          ctx.stdOut(`Client disconnected: ${event.publicKey}`)
         } else if (event.type === 'error') {
-          ctx.logger.error(`Share error: ${event.message}`)
+          ctx.stdErr(`Share error: ${event.message}`)
         }
       },
     )

@@ -49,18 +49,18 @@ export const createCommandList = (ctx: Context, _program: Command) => {
     .description('List active tunnels')
     .action(async () => {
       if (!await daemonClient().isRunning()) {
-        ctx.logger.info('No daemon running. Start a tunnel with `tunli http <port>`.')
+        ctx.stdOut('No daemon running. Start a tunnel with `tunli http <port>`.')
         return
       }
       const result = await daemonClient().send({type: 'list'})
       if (result.type !== 'list') {
-        ctx.logger.error('Unexpected response from daemon.')
+        ctx.stdErr('Unexpected response from daemon.')
         return
       }
       if (!result.tunnels.length) {
-        ctx.logger.info('No active tunnels.')
+        ctx.stdOut('No active tunnels.')
         return
       }
-      ctx.logger.info(formatTunnelList(result.tunnels))
+      ctx.stdOut(formatTunnelList(result.tunnels))
     })
 }

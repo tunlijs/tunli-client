@@ -52,3 +52,11 @@ export const REPLAY_META_FILEPATH = resolve(GLOBAL_CONFIG_DIR, 'replay-meta.json
 export const REPLAY_BODY_LIMIT = 1024 * 1024 // 1 MB
 export const REPLAY_BUFFER_CAPACITY = 200
 export const REPLAY_META_TTL_MS = 24 * 60 * 60 * 1000 // 24h
+
+export const {IS_DEV_ENV} = (() => {
+  const isDev = import.meta.url.endsWith('.ts') ? true : false
+  return {
+    IS_DEV_ENV: isDev
+  }
+})();
+

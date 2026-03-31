@@ -15,7 +15,7 @@ export const createCommandConnect = (ctx: Context, _program: Command) => {
     const localPort = (options.port as number | undefined) ?? 0
 
     if (!targetPublicKey.startsWith('tunli1')) {
-      ctx.logger.error('Invalid public key. Expected format: tunli1...')
+      ctx.stdErr('Invalid public key. Expected format: tunli1...')
       return ctx.exit(1)
     }
 
@@ -23,7 +23,7 @@ export const createCommandConnect = (ctx: Context, _program: Command) => {
     const serverConf = ctx.config.global.server(serverName)
 
     if (!serverConf.exists() || !serverConf.authToken || !serverConf.url) {
-      ctx.logger.error('Not registered. Run `tunli register` first.')
+      ctx.stdErr('Not registered. Run `tunli register` first.')
       return ctx.exit(1)
     }
 
@@ -32,7 +32,7 @@ export const createCommandConnect = (ctx: Context, _program: Command) => {
 
     const connectInfoResult = await apiClient.connectInfo()
     if (connectInfoResult.error) {
-      ctx.logger.error(`Failed to reach relay: ${connectInfoResult.error.message}`)
+      ctx.stdErr(`Failed to reach relay: ${connectInfoResult.error.message}`)
       return ctx.exit(1)
     }
 
@@ -40,9 +40,10 @@ export const createCommandConnect = (ctx: Context, _program: Command) => {
 
     const identity = ensureIdentity()
 
-    ctx.logger.info(`Connecting to share ${targetPublicKey}...`)
+    ctx.stdOut(`Connecting to share ${targetPublicKey}...`)
 
     const client = createShareClient(
+      ctx.logger,
       serverConfig,
       socketUrl,
       capturePath,
@@ -51,19 +52,25 @@ export const createCommandConnect = (ctx: Context, _program: Command) => {
       localPort,
       (event) => {
         if (event.type === 'connected') {
-          ctx.logger.info(`Connected. Service available at localhost:${event.localPort}`)
-          ctx.logger.info(`For SSH: ssh -p ${event.localPort} user@localhost`)
+          ctx.stdOut(`Connected. Service available at localhost:${event.localPort}`)
+          ctx.stdOut(`For SSH: ssh -p ${event.localPort} user@localhost`)
         } else if (event.type === 'error') {
-          ctx.logger.error(`Connection failed: ${event.message}`)
-          process.exit(1)
+          ctx.stdErr(`Connection failed: ${event.message}`)
+          ctx.exit(1)
         } else if (event.type === 'disconnected') {
-          ctx.logger.info('Share host disconnected.')
+          ctx.stdOut('Share host disconnected.')
         }
       },
     )
 
-    process.on('SIGINT', () => { client.disconnect(); process.exit(0) })
-    process.on('SIGTERM', () => { client.disconnect(); process.exit(0) })
+    process.on('SIGINT', () => {
+      client.disconnect();
+      ctx.exit(0)
+    })
+    process.on('SIGTERM', () => {
+      client.disconnect();
+      ctx.exit(0)
+    })
   })
 
   return cmd

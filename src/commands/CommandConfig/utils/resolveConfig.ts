@@ -9,12 +9,12 @@ export function resolveConfig(ctx: Context, options: SharedOptions, mode?: "prof
 export function resolveConfig(ctx: Context, options: SharedOptions, mode: "config-only"): ParsedConfig
 export function resolveConfig(ctx: Context, options: SharedOptions, mode: "profile" | "save" | "config-only" = 'profile'): ParsedProfileConfig | ParsedConfig {
   if (options.local && !ctx.config.local) {
-    ctx.logger.warn(' No local config found. Run `tunli init` to create one.')
+    ctx.stdOut('No local config found. Run `tunli init` to create one.')
     ctx.exit(1)
   }
 
   if (options.global && !ctx.config.global.exists()) {
-    ctx.logger.warn(' No global config found. Run `tunli register` to create one.')
+    ctx.stdOut('No global config found. Run `tunli register` to create one.')
     ctx.exit(1)
   }
 

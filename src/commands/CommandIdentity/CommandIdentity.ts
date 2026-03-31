@@ -11,10 +11,10 @@ export const createCommandIdentity = (ctx: Context, _program: Command) => {
     const identity = ensureIdentity()
     const pubKey = encodePublicKey(identity.publicKeyRaw)
     const fp = fingerprint(identity.publicKeyRaw)
-    ctx.logger.info(`Public key:  ${pubKey}`)
-    ctx.logger.info(`Fingerprint: ${fp}`)
-    ctx.logger.info(`Key file:    ${IDENTITY_KEY_PATH}`)
-    ctx.logger.info(`Pub file:    ${IDENTITY_PUB_PATH}`)
+    ctx.stdOut(`Public key:  ${pubKey}`)
+    ctx.stdOut(`Fingerprint: ${fp}`)
+    ctx.stdOut(`Key file:    ${IDENTITY_KEY_PATH}`)
+    ctx.stdOut(`Pub file:    ${IDENTITY_PUB_PATH}`)
   })
 
   return cmd

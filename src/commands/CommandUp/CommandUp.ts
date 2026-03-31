@@ -8,13 +8,13 @@ export const createCommandUp = (ctx: Context, _program: Command) => {
     .description('Start all profiles defined in the local config')
     .action(async () => {
       if (!ctx.config.local) {
-        ctx.logger.error('No local config found. Run `tunli init` to create one.')
+        ctx.stdErr('No local config found. Run `tunli init` to create one.')
         return ctx.exit(1)
       }
 
       const profiles = ctx.config.local.profiles
       if (profiles.length === 0) {
-        ctx.logger.error('No profiles defined in local config. Add profiles to .tunli/config.json first.')
+        ctx.stdErr('No profiles defined in local config. Add profiles to .tunli/config.json first.')
         return ctx.exit(1)
       }
 
@@ -22,7 +22,7 @@ export const createCommandUp = (ctx: Context, _program: Command) => {
 
       for (const profile of profiles) {
         const validated = await validateProfileConfig(ctx, profile).catch((e: Error) => {
-          ctx.logger.error(`${profile.name}: ${e.message}`)
+          ctx.stdErr(`${profile.name}: ${e.message}`)
           return null
         })
         if (!validated) continue
@@ -41,16 +41,16 @@ export const createCommandUp = (ctx: Context, _program: Command) => {
         })
 
         if (result.type === 'error') {
-          ctx.logger.error(`${validated.profileName}: ${result.message}`)
+          ctx.stdErr(`${validated.profileName}: ${result.message}`)
           continue
         }
 
         if (result.type === 'started') {
           const targetUrl = `${validated.target.protocol}://${validated.target.host}:${validated.target.port}`
           if (result.alreadyRunning) {
-            ctx.logger.info(`${validated.profileName}: already running → ${result.proxyURL}`)
+            ctx.stdOut(`${validated.profileName}: already running → ${result.proxyURL}`)
           } else {
-            ctx.logger.info(`${validated.profileName}: ✓ ${result.proxyURL} → ${targetUrl}`)
+            ctx.stdOut(`${validated.profileName}: ✓ ${result.proxyURL} → ${targetUrl}`)
           }
         }
       }

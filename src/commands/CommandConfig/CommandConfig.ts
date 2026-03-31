@@ -16,15 +16,15 @@ export const createCommandConfig = (ctx: Context, _program: Command) => {
   cmd.addCommand(configServersCommand(ctx))
   cmd.action(({options}: ParseResult<UnknownRecord, SharedOptions>) => {
     const config = resolveConfig(ctx, options, 'config-only')
-    ctx.logger.info(formatConfig(config))
+    ctx.stdOut(formatConfig(config))
   })
   cmd
     .addCommand(configSetCommand(ctx))
     .addCommand(configGetCommand(ctx))
     .addCommand(configDeleteCommand(ctx))
     .addCommand(new Command('dump').action(() => {
-      ctx.logger.info(formatConfig(ctx.config.global))
-      if (ctx.config.local) ctx.logger.info(formatConfig(ctx.config.local))
+      ctx.stdOut(formatConfig(ctx.config.global))
+      if (ctx.config.local) ctx.stdOut(formatConfig(ctx.config.local))
     }))
 
   cmd.extendUsage()
