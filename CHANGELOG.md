@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### `tunli setup`: interactive setup wizard
+- New `setup` command — 5-step wizard for first-time configuration
+- Step 1 (Relay): auto-registers with tunli.app if no account exists, reuses existing registration otherwise
+- Step 2 (Config location): uses existing local config, offers to create one in the current directory, or falls back to global config
+- Step 3 (Profile name): prompted with default `default`; warns and confirms before overwriting an existing profile
+- Step 4 (Target): protocol (`http`/`https`, validated loop), host (default `localhost`), port (validated loop with clear error)
+- Step 5 (Access control): optional CIDR allow-list, gracefully skipped on empty input
+- Registers proxy with relay via `validateProfileConfig`, saves config, prints `tunli use <name>` and optionally `tunli up` hint
+
 ### Refactor: unified logging system
 - New `LoggerAbstract` base class with level filtering and pluggable write function
 - `FileLogger` (daemon, writes daily log files) and `StdOutLogger` (CLI, writes to console) extend `LoggerAbstract`

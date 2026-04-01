@@ -19,6 +19,7 @@ import {createCommandRegister} from "#commands/CommandRegister/CommandRegister";
 import {createLocalConfig} from "#config/utils";
 import {createCommandAuth} from "#commands/CommandAuth/CommandAuth";
 import {createCommandInit} from "#commands/CommandInit/CommandInit";
+import {createCommandSetup} from "#commands/CommandSetup/CommandSetup";
 import {createCommandServer} from "#commands/CommandServer/CommandServer";
 import {ParsedGlobalConfig} from "#config/ParsedGlobalConfig";
 import {ParsedLocalConfig} from "#config/ParsedLocalConfig";
@@ -81,6 +82,7 @@ program
   .addOption(new Option('version').short('v'))
 
 program.addCommand(createCommandInit(ctx, program))
+program.addCommand(createCommandSetup(ctx, program))
 program.addCommand(createCommandConfig(ctx, program))
 program.addCommand(createCommandHttp(ctx, program), {isDefault: true})
 program.addCommand(createCommandHttp(ctx, program, 'https'))
