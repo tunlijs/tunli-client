@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### feat: CIDR allow/deny enforcement via WebSocket handshake
+- `allowCidr`/`denyCidr` passed in socket.io `auth` on every connect/reconnect
+- Server stores rules in `TunnelSocketRegistry` (in-memory, tied to socket lifetime)
+- `client-blocked` event forwarded to `AppEventEmitter`
+
 ### refactor: custom error classes for version errors
 - New `UserFacingError` base class and `ServerTooOldError` / `VersionIncompatibleError` in `src/lib/errors.ts`
 - `Command.ts` catches `UserFacingError` and logs as `error` (not `exception`) — no stack trace in log file for expected user-facing errors

@@ -31,14 +31,6 @@ export type ProxyConfig = {
   readonly proxyIdent: string
 }
 
-export type IncomingSocketIoRequest = {
-  method: RequestMethod
-  headers: Headers
-  path: string
-  port: number
-  hostname: string
-}
-
 export type RequestMethod = "GET" | "POST" | "PATCH" | "DELETE" | "HEAD" | "OPTION" | "PUT"
 
 export interface Headers {

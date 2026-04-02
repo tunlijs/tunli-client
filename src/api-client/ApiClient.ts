@@ -127,5 +127,4 @@ export class ApiClient {
       minClientVersion: response.data.minClientVersion as string | undefined,
     })
   }
-
 }

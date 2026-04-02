@@ -52,7 +52,11 @@ export const createProxy = async (
 
   const createSocket = (): Socket => io(TUNNEL_HOST, {
     path: TUNNEL_SOCKET_PATH,
-    auth: {token},
+    auth: {
+      token,
+      ...(config.allowedCidr.length && {allowCidr: config.allowedCidr.map(String)}),
+      ...(config.deniedCidr.length && {denyCidr: config.deniedCidr.map(String)}),
+    },
     extraHeaders: {
       'x-tunnel-id': config.proxy.proxyIdent,
     },
@@ -95,6 +99,7 @@ export const createProxy = async (
       }
     })
 
+    socket.on('client-blocked', (ip: string) => appEventEmitter.emit('client-blocked', ip))
     socket.on('connect_error', (e) => appEventEmitter.emit('connect_error', e))
 
     socket.on('request', (requestId: string, meta: TunnelRequestMeta) => {
@@ -213,9 +218,9 @@ export const createProxy = async (
   function forwardUpgrade(socket: Socket, requestId: string, meta: TunnelRequestMeta) {
     const tcpSocket = config.target.protocol === 'https'
       ? tls.connect(config.target.port, config.target.host, {
-          rejectUnauthorized: false,
-          servername: config.target.host,
-        })
+        rejectUnauthorized: false,
+        servername: config.target.host,
+      })
       : net.connect(config.target.port, config.target.host)
 
     tcpSocket.once('connect', () => {

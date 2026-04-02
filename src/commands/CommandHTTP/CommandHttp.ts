@@ -11,6 +11,7 @@ import {createProxy} from "#proxy/Proxy";
 import {initDashboard} from "#cli-app/Dashboard";
 import {initLiveLog} from "#cli-app/LiveLog";
 import {addAllowDenyCidrOptions} from "#commands/shared/allowDenyCidrCommand";
+import type {IPv4Address} from "@pfeiferio/ipv4";
 
 export const createCommandHttp = (ctx: Context, _program: Command, protocol: Protocol = 'http') => {
   const cmd = new Command(protocol)
@@ -26,12 +27,12 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
     const port = args.port as number
     const host = (args.host as string | undefined) ?? 'localhost'
     const opts = options as Omit<SharedOptions, "profile"> & {
-      save: string;
-      foreground: boolean;
-      dashboard: boolean;
-      logs: boolean;
-      allowCidr?: string[];
-      denyCidr?: string[];
+      save: string
+      foreground: boolean
+      dashboard: boolean
+      logs: boolean
+      allowCidr?: IPv4Address[]
+      denyCidr?: IPv4Address[]
     }
 
     const config = resolveConfig(ctx, {
@@ -41,8 +42,8 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
     }, 'save')
 
     config.update({protocol, host, port})
-    if (opts.allowCidr?.length) config.allowCidr = [...(config.allowCidr ?? []), ...opts.allowCidr]
-    if (opts.denyCidr?.length) config.denyCidr = [...(config.denyCidr ?? []), ...opts.denyCidr]
+    if (opts.allowCidr?.length) config.allowCidr = [...(config.allowCidr ?? []), ...opts.allowCidr.map(ip => ip.network().toString())]
+    if (opts.denyCidr?.length) config.denyCidr = [...(config.denyCidr ?? []), ...opts.denyCidr.map(ip => ip.network().toString())]
 
     const validated = await validateProfileConfig(ctx, config)
 
