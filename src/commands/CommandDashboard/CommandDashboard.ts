@@ -5,6 +5,7 @@ import type {TunnelInfo} from "#daemon/protocol";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {initDashboard} from "#cli-app/Dashboard";
 import {pickTunnel} from "#cli-app/TunnelPicker";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandDashboard = (ctx: Context, _program: Command) => {
   return new Command('dashboard')
@@ -12,7 +13,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
     .addArgument(new Argument('profile', 'Profile name to attach to'))
     .action(async ({args}) => {
       if (!await daemonClient().isRunning()) {
-        ctx.stdErr('No daemon running. Start a tunnel first with `tunli http <port>`.')
+        ctx.stdErr(ERROR_MESSAGES.NO_DAEMON_RUNNING_START_TUNNEL)
         return ctx.exit(1)
       }
 
@@ -20,7 +21,7 @@ export const createCommandDashboard = (ctx: Context, _program: Command) => {
       if (listResult.type !== 'list') return ctx.exit(1)
 
       if (listResult.tunnels.length === 0) {
-        ctx.stdErr('No active tunnels.')
+        ctx.stdErr(ERROR_MESSAGES.NO_ACTIVE_TUNNELS)
         return ctx.exit(1)
       }
 

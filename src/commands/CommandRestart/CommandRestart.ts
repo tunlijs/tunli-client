@@ -8,6 +8,7 @@ import type {ParsedProfileConfig} from "#config/ParsedProfileConfig";
 import {addAllowDenyCidrOptions} from "#commands/shared/allowDenyCidrCommand";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
 import {daemonClient} from "#daemon/DaemonClient";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandRestart = (ctx: Context, _program: Command) => {
   const cmd = new Command('restart')
@@ -41,7 +42,7 @@ export const createCommandRestart = (ctx: Context, _program: Command) => {
     const validated = await validateProfileConfig(ctx, config)
 
     if (!await daemonClient().isRunning()) {
-      ctx.stdErr('No daemon running. Use `tunli start <profile>` instead.')
+      ctx.stdErr(ERROR_MESSAGES.NO_DAEMON_RUNNING_USE_START)
       return ctx.exit(1)
     }
 

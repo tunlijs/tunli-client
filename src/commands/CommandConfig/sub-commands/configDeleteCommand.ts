@@ -4,6 +4,7 @@ import {resolveConfig} from "#commands/CommandConfig/utils/resolveConfig";
 import type {SharedOptions} from "#commands/CommandConfig/types";
 import {formatPath} from "#output-formats/formatPath";
 import {confirm} from "#commands/utils";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 type DeleteOptions = SharedOptions & { force?: boolean }
 
@@ -17,7 +18,7 @@ export const configDeleteCommand = (ctx: Context) => {
       const ok = options.force || await confirm(`Remove config file ${path} (${config.mode})? [y/N] `)
 
       if (!ok) {
-        ctx.stdOut('Aborted.')
+        ctx.stdOut(ERROR_MESSAGES.ABORTED)
         return ctx.exit(0)
       }
 

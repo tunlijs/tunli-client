@@ -3,6 +3,7 @@ import type {Context} from "#types/types";
 import {attachTunnel, daemonClient} from "#daemon/DaemonClient";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {initLiveLog} from "#cli-app/LiveLog";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandLogs = (ctx: Context, _program: Command) => {
   return new Command('logs')
@@ -11,7 +12,7 @@ export const createCommandLogs = (ctx: Context, _program: Command) => {
     .addArgument(new Argument('profile', 'Profile name to attach to'))
     .action(async ({args}) => {
       if (!await daemonClient().isRunning()) {
-        ctx.stdErr('No daemon running. Start a tunnel first with `tunli http <port>`.')
+        ctx.stdErr(ERROR_MESSAGES.NO_DAEMON_RUNNING_START_TUNNEL)
         return ctx.exit(1)
       }
 
@@ -20,7 +21,7 @@ export const createCommandLogs = (ctx: Context, _program: Command) => {
 
       const profileName = (args.profile as string | undefined) ?? listResult.tunnels[0]?.profileName
       if (!profileName) {
-        ctx.stdErr('No active tunnels.')
+        ctx.stdErr(ERROR_MESSAGES.NO_ACTIVE_TUNNELS)
         return ctx.exit(1)
       }
 

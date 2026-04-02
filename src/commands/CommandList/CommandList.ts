@@ -4,6 +4,7 @@ import {daemonClient} from "#daemon/DaemonClient";
 import {type Align, heading, row, separator, tableWidth} from "#output-formats/table";
 import chalk from "chalk";
 import type {TunnelInfo} from "#daemon/protocol";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 const statusColor = (status: TunnelInfo['status']) => {
   switch (status) {
@@ -49,16 +50,16 @@ export const createCommandList = (ctx: Context, _program: Command) => {
     .description('List active tunnels')
     .action(async () => {
       if (!await daemonClient().isRunning()) {
-        ctx.stdOut('No daemon running. Start a tunnel with `tunli http <port>`.')
+        ctx.stdOut(ERROR_MESSAGES.NO_DAEMON_RUNNING_START_TUNNEL_LIST)
         return
       }
       const result = await daemonClient().send({type: 'list'})
       if (result.type !== 'list') {
-        ctx.stdErr('Unexpected response from daemon.')
+        ctx.stdErr(ERROR_MESSAGES.UNEXPECTED_DAEMON_RESPONSE)
         return
       }
       if (!result.tunnels.length) {
-        ctx.stdOut('No active tunnels.')
+        ctx.stdOut(ERROR_MESSAGES.NO_ACTIVE_TUNNELS)
         return
       }
       ctx.stdOut(formatTunnelList(result.tunnels))

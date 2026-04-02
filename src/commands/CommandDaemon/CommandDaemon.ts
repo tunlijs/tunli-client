@@ -3,6 +3,7 @@ import type {Context} from "#types/types";
 import {daemonClient} from "#daemon/DaemonClient";
 import {dumpAndStopDaemon} from "#lib/Flow/applyUpdate";
 import {confirm} from "#commands/utils";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 const getTunnelCount = async (): Promise<number> => {
   const result = await daemonClient().send({type: 'list'})
@@ -32,7 +33,7 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
       .addOption(new Option('force', 'Stop without confirmation even if tunnels are active').short('f'))
       .action(async ({options}) => {
         if (!await daemonClient().isRunning()) {
-          ctx.stdOut('Daemon is not running.')
+          ctx.stdOut(ERROR_MESSAGES.DAEMON_NOT_RUNNING)
           return
         }
         const count = await getTunnelCount()
@@ -76,13 +77,13 @@ export const createCommandDaemon = (ctx: Context, _program: Command) => {
       .description('Show daemon status')
       .action(async () => {
         if (!await daemonClient().isRunning()) {
-          ctx.stdOut('Daemon is not running.')
+          ctx.stdOut(ERROR_MESSAGES.DAEMON_NOT_RUNNING)
           return
         }
         const count = await getTunnelCount()
         ctx.stdOut(count > 0
           ? `Daemon is running. ${count} active tunnel(s).`
-          : 'Daemon is running. No active tunnels.'
+          : `Daemon is running. ${ERROR_MESSAGES.NO_ACTIVE_TUNNELS}`
         )
       })
   )

@@ -1,6 +1,7 @@
 import {Argument, Command} from "#commander/index";
 import type {Context} from "#types/types";
 import {daemonClient} from "#daemon/DaemonClient";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandStop = (ctx: Context, _program: Command) => {
   return new Command('stop')
@@ -9,7 +10,7 @@ export const createCommandStop = (ctx: Context, _program: Command) => {
     .action(async ({args}) => {
       const profiles = args.profiles as string[]
       if (!await daemonClient().isRunning()) {
-        ctx.stdOut('No daemon running.')
+        ctx.stdOut(ERROR_MESSAGES.NO_DAEMON_RUNNING)
         return
       }
       for (const profile of profiles) {
@@ -19,7 +20,7 @@ export const createCommandStop = (ctx: Context, _program: Command) => {
         } else if (result.type === 'error') {
           ctx.stdErr(result.message)
         } else {
-          ctx.stdErr('Unexpected response from daemon.')
+          ctx.stdErr(ERROR_MESSAGES.UNEXPECTED_DAEMON_RESPONSE)
         }
       }
     })

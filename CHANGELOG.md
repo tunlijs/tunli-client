@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Refactor: centralized error messages
+- New `src/lib/errorMessages.ts` with all user-facing error and status messages
+- Eliminates duplicate strings across commands (`NO_LOCAL_CONFIG`, `NOT_REGISTERED`, `NO_DAEMON_RUNNING`, `NO_ACTIVE_TUNNELS`, `UNEXPECTED_DAEMON_RESPONSE`, `FAILED_TO_REACH_RELAY`, `PROFILE_NOT_FOUND`, `ABORTED`, `REGISTRATION_FAILED`, `VERSION_INCOMPATIBLE`, and more)
+
 ### `tunli http` / `tunli https`: add `--allow` / `--deny` CIDR options
 - `--allow <cidr>` and `--deny <cidr>` flags now available on the `http`/`https` commands, consistent with `tunli use`
 

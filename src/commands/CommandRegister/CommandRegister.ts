@@ -1,6 +1,7 @@
 import {Command, Option, type ParseResult} from "#commander/index";
 import type {Context} from "#types/types";
 import {DEFAULT_API_SERVER_URL, DEFAULT_SERVER_NAME} from "#lib/defs";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 import {encodePublicKey, ensureIdentity, fingerprint, loadIdentity} from "#identity/identity";
 
 export const createCommandRegister = (ctx: Context, _program: Command) => {
@@ -35,7 +36,7 @@ export const createCommandRegister = (ctx: Context, _program: Command) => {
       if (error) {
         ctx.stdErr(error.message)
       } else {
-        ctx.stdErr('Registration failed. Please try again later.')
+        ctx.stdErr(ERROR_MESSAGES.REGISTRATION_FAILED)
       }
       return ctx.exit(1)
     }

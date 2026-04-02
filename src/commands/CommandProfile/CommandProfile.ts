@@ -6,6 +6,7 @@ import {addSharedOptions} from "#commands/CommandConfig/utils/sharedOptions";
 import {formatSaveResult} from "#output-formats/formatSaveResult";
 import {formatProfilesShort} from "#output-formats/formatProfilesShort";
 import {confirm} from "#commands/utils";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const configProfilesCommand = (
   ctx: Context,
@@ -39,13 +40,13 @@ export const createCommandProfile = (ctx: Context, _program: Command) => {
       }, SharedOptions & {force: boolean}>) => {
         const config = resolveConfig(ctx, options, 'config-only').profile(args.name)
         if (!config.exists()) {
-          ctx.stdErr(`Profile "${args.name}" not found.`)
+          ctx.stdErr(ERROR_MESSAGES.PROFILE_NOT_FOUND(args.name))
           return ctx.exit(1)
         }
         const ok = options.force || await confirm(`Remove profile "${config.name}" from ${config.filepath} (${config.locationType})? [y/N] `)
 
         if (!ok) {
-          ctx.stdOut('Aborted.')
+          ctx.stdOut(ERROR_MESSAGES.ABORTED)
           return ctx.exit(0)
         }
 
@@ -62,7 +63,7 @@ export const createCommandProfile = (ctx: Context, _program: Command) => {
         const config = resolveConfig(ctx, options, 'config-only')
 
         if (!config.profile(name).exists()) {
-          ctx.stdOut(`Profile "${name}" not found.`)
+          ctx.stdOut(ERROR_MESSAGES.PROFILE_NOT_FOUND(name))
         } else {
           config.defaultProfile = name
           config.save()

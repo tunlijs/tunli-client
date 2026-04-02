@@ -3,6 +3,7 @@ import type {Context} from '#types/types'
 import {ensureIdentity, encodePublicKey, fingerprint} from '#identity/identity'
 import {createShareHost} from '#share/ShareHost'
 import {DEFAULT_SERVER_NAME} from '#lib/defs'
+import {ERROR_MESSAGES} from '#lib/errorMessages'
 
 export const createCommandShare = (ctx: Context, _program: Command) => {
   const cmd = new Command('share')
@@ -18,7 +19,7 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
     const serverConf = ctx.config.global.server(serverName)
 
     if (!serverConf.exists() || !serverConf.authToken || !serverConf.url) {
-      ctx.stdErr('Not registered. Run `tunli register` first.')
+      ctx.stdErr(ERROR_MESSAGES.NOT_REGISTERED)
       return ctx.exit(1)
     }
 
@@ -27,7 +28,7 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
 
     const connectInfoResult = await apiClient.connectInfo()
     if (connectInfoResult.error) {
-      ctx.stdErr(`Failed to reach relay: ${connectInfoResult.error.message}`)
+      ctx.stdErr(ERROR_MESSAGES.FAILED_TO_REACH_RELAY(connectInfoResult.error.message))
       return ctx.exit(1)
     }
 

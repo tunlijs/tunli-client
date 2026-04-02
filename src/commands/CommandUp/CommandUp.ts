@@ -2,13 +2,14 @@ import {Command} from "#commander/index";
 import type {Context} from "#types/types";
 import {validateProfileConfig} from "#config/validations/validateProfileConfig";
 import {daemonClient} from "#daemon/DaemonClient";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandUp = (ctx: Context, _program: Command) => {
   return new Command('up')
     .description('Start all profiles defined in the local config')
     .action(async () => {
       if (!ctx.config.local) {
-        ctx.stdErr('No local config found. Run `tunli init` to create one.')
+        ctx.stdErr(ERROR_MESSAGES.NO_LOCAL_CONFIG)
         return ctx.exit(1)
       }
 

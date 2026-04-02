@@ -5,6 +5,7 @@ import type {StoredRequestMeta, TunnelInfo} from '#daemon/protocol'
 import {Box, render, Text, useApp, useInput} from 'ink'
 import {useState} from 'react'
 import chalk from 'chalk'
+import {ERROR_MESSAGES} from "#lib/errorMessages"
 
 const statusColor = (status: number | null | undefined): string => {
   if (!status) return '—'
@@ -93,7 +94,7 @@ export const createCommandReplay = (ctx: Context, _program: Command) => {
       if (!profileName) {
         const res = await daemonClient().send({type: 'list'}).catch(() => null)
         if (!res || res.type !== 'list' || res.tunnels.length === 0) {
-          ctx.stdErr('No active tunnels.')
+          ctx.stdErr(ERROR_MESSAGES.NO_ACTIVE_TUNNELS)
           return ctx.exit(1)
         }
         if (res.tunnels.length === 1) {

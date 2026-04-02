@@ -1,18 +1,19 @@
 import {Command} from "#commander/index";
 import type {Context} from "#types/types";
 import {daemonClient} from "#daemon/DaemonClient";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 export const createCommandDown = (ctx: Context, _program: Command) => {
   return new Command('down')
     .description('Stop all tunnels belonging to the local config profiles')
     .action(async () => {
       if (!ctx.config.local) {
-        ctx.stdErr('No local config found. Run `tunli init` to create one.')
+        ctx.stdErr(ERROR_MESSAGES.NO_LOCAL_CONFIG)
         return ctx.exit(1)
       }
 
       if (!await daemonClient().isRunning()) {
-        ctx.stdOut('No daemon running.')
+        ctx.stdOut(ERROR_MESSAGES.NO_DAEMON_RUNNING)
         return
       }
 
