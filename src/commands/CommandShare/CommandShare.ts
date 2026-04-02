@@ -2,7 +2,7 @@ import {Argument, Command} from '#commander/index'
 import type {Context} from '#types/types'
 import {ensureIdentity, encodePublicKey, fingerprint} from '#identity/identity'
 import {createShareHost} from '#share/ShareHost'
-import {CLIENT_VERSION, DEFAULT_SERVER_NAME} from '#lib/defs'
+import {CLIENT_VERSION, DEFAULT_SERVER_NAME, MIN_SERVER_VERSION} from '#lib/defs'
 import {isVersionCompatible} from '#utils/versionFunctions'
 import {ERROR_MESSAGES} from '#lib/errorMessages'
 
@@ -33,7 +33,11 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
       return ctx.exit(1)
     }
 
-    const {socketUrl, capturePath, minClientVersion} = connectInfoResult.data
+    const {socketUrl, capturePath, serverVersion, minClientVersion} = connectInfoResult.data
+    if (!serverVersion || !isVersionCompatible(serverVersion, MIN_SERVER_VERSION)) {
+      ctx.stdErr(ERROR_MESSAGES.SERVER_TOO_OLD(MIN_SERVER_VERSION, serverVersion))
+      return ctx.exit(1)
+    }
     if (minClientVersion && !isVersionCompatible(CLIENT_VERSION, minClientVersion)) {
       ctx.stdErr(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))
       return ctx.exit(1)
@@ -70,8 +74,14 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
       },
     )
 
-    process.on('SIGINT', () => { host_.disconnect(); process.exit(0) })
-    process.on('SIGTERM', () => { host_.disconnect(); process.exit(0) })
+    process.on('SIGINT', () => {
+      host_.disconnect();
+      process.exit(0)
+    })
+    process.on('SIGTERM', () => {
+      host_.disconnect();
+      process.exit(0)
+    })
   })
 
   return cmd

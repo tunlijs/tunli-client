@@ -114,7 +114,8 @@ export class ApiClient {
     socketUrl: string;
     capturePath: string;
     connectionPoolSize: number;
-    minClientVersion: string
+    serverVersion: string | undefined;
+    minClientVersion: string | undefined;
   }>> {
     const response = await this.#doGet('/connect-info')
     if (response.isError) return errorResponse(response)
@@ -122,7 +123,9 @@ export class ApiClient {
       socketUrl: response.data.socketUrl as string,
       capturePath: response.data.capturePath as string,
       connectionPoolSize: response.data.connectionPoolSize as number ?? 1,
-      minClientVersion: response.data.minClientVersion as string,
+      serverVersion: response.data.serverVersion as string | undefined,
+      minClientVersion: response.data.minClientVersion as string | undefined,
     })
   }
+
 }

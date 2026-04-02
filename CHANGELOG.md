@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### feat: server version check
+- Client requires server >= `0.4.0` (`MIN_SERVER_VERSION` in `defs.ts`)
+- `GET /connect-info` now returns `serverVersion` — missing or too old fails with clear error message
+
 ### feat: client/server version compatibility check
 - `CLIENT_VERSION` constant in `defs.ts` — resolved from `__APP_VERSION__` (SEA build) or `package.json` at runtime
 - `isVersionCompatible()` in `versionFunctions.ts` for semver comparison

@@ -5,7 +5,7 @@ import tls from 'tls'
 import {io, type Socket} from 'socket.io-client'
 import type {ProfileConfig} from "#types/types";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
-import {CLIENT_VERSION, PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
+import {CLIENT_VERSION, MIN_SERVER_VERSION, PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
 import {isVersionCompatible} from "#utils/versionFunctions";
 import {ERROR_MESSAGES} from "#lib/errorMessages";
 
@@ -29,8 +29,13 @@ export const createProxy = async (
     socketUrl: TUNNEL_HOST,
     capturePath: TUNNEL_SOCKET_PATH,
     connectionPoolSize,
+    serverVersion,
     minClientVersion
   } = connectInfoResult.data
+
+  if (!serverVersion || !isVersionCompatible(serverVersion, MIN_SERVER_VERSION)) {
+    throw new Error(ERROR_MESSAGES.SERVER_TOO_OLD(MIN_SERVER_VERSION, serverVersion))
+  }
 
   if (minClientVersion && !isVersionCompatible(CLIENT_VERSION, minClientVersion)) {
     throw new Error(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))

@@ -1,6 +1,10 @@
 export const ERROR_MESSAGES = {
   VERSION_INCOMPATIBLE: (minClientVersion: string, clientVersion: string) =>
     `Server requires tunli >= ${minClientVersion}, you are running ${clientVersion}. Run \`npm i -g tunli\` to update.`,
+  SERVER_TOO_OLD: (minServerVersion: string, serverVersion?: string) =>
+    serverVersion
+      ? `Server version ${serverVersion} is too old. This client requires server >= ${minServerVersion}.`
+      : `Server version unknown (< ${minServerVersion}). Please update the server.`,
 
   NO_LOCAL_CONFIG: "No local config found. Run `tunli init` to create one.",
   NOT_REGISTERED: "Not registered. Run `tunli register` first.",

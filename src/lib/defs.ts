@@ -5,6 +5,7 @@ import {readPackageJson} from "#package-json/packageJson";
 
 declare const __APP_VERSION__: string | undefined
 export const CLIENT_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : readPackageJson()?.version ?? 'dev'
+export const MIN_SERVER_VERSION = '0.4.0'
 
 export const PING_INTERVAL = 5000
 
