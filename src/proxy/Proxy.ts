@@ -8,6 +8,7 @@ import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {CLIENT_VERSION, MIN_SERVER_VERSION, PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
 import {isVersionCompatible} from "#utils/versionFunctions";
 import {ERROR_MESSAGES} from "#lib/errorMessages";
+import {ServerTooOldError, VersionIncompatibleError} from "#lib/errors";
 
 interface TunnelRequestMeta {
   method: string
@@ -34,11 +35,11 @@ export const createProxy = async (
   } = connectInfoResult.data
 
   if (!serverVersion || !isVersionCompatible(serverVersion, MIN_SERVER_VERSION)) {
-    throw new Error(ERROR_MESSAGES.SERVER_TOO_OLD(MIN_SERVER_VERSION, serverVersion))
+    throw new ServerTooOldError(ERROR_MESSAGES.SERVER_TOO_OLD(MIN_SERVER_VERSION, serverVersion))
   }
 
   if (minClientVersion && !isVersionCompatible(CLIENT_VERSION, minClientVersion)) {
-    throw new Error(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))
+    throw new VersionIncompatibleError(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))
   }
 
   const token = config.serverConfig.authToken

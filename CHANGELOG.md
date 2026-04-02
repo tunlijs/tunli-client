@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### refactor: custom error classes for version errors
+- New `UserFacingError` base class and `ServerTooOldError` / `VersionIncompatibleError` in `src/lib/errors.ts`
+- `Command.ts` catches `UserFacingError` and logs as `error` (not `exception`) — no stack trace in log file for expected user-facing errors
+
 ### feat: server version check
 - Client requires server >= `0.4.0` (`MIN_SERVER_VERSION` in `defs.ts`)
 - `GET /connect-info` now returns `serverVersion` — missing or too old fails with clear error message

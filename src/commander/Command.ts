@@ -11,6 +11,7 @@ import {findCommand, formatHelp} from '#commands/helper/Help'
 import {Option} from './Option.js'
 import {type ArgSpec, Argument, type ParseFn} from './Argument.js'
 import {fileLogger} from "#logger/ComputedLogger";
+import {UserFacingError} from "#lib/errors";
 
 const toCamelCase = (str: string): string =>
   str.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())
@@ -178,7 +179,12 @@ export class Command {
       try {
         await (result.action as (r: ParseResult) => Promise<void>)(result)
       } catch (e) {
-        fileLogger().exception(e)
+        process.stderr.write((e instanceof Error ? e.message : String(e)) + "\n")
+        if (e instanceof UserFacingError) {
+          fileLogger().error(e.message)
+        } else {
+          fileLogger().exception(e)
+        }
         process.exit(1)
       }
     }
