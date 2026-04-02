@@ -5,7 +5,9 @@ import tls from 'tls'
 import {io, type Socket} from 'socket.io-client'
 import type {ProfileConfig} from "#types/types";
 import {AppEventEmitter} from "#cli-app/AppEventEmitter";
-import {PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
+import {CLIENT_VERSION, PING_INTERVAL, REPLAY_BODY_LIMIT} from "#lib/defs";
+import {isVersionCompatible} from "#utils/versionFunctions";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 
 interface TunnelRequestMeta {
   method: string
@@ -23,7 +25,16 @@ export const createProxy = async (
 
   if (connectInfoResult.error) throw connectInfoResult.error
 
-  const {socketUrl: TUNNEL_HOST, capturePath: TUNNEL_SOCKET_PATH, connectionPoolSize} = connectInfoResult.data
+  const {
+    socketUrl: TUNNEL_HOST,
+    capturePath: TUNNEL_SOCKET_PATH,
+    connectionPoolSize,
+    minClientVersion
+  } = connectInfoResult.data
+
+  if (minClientVersion && !isVersionCompatible(CLIENT_VERSION, minClientVersion)) {
+    throw new Error(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))
+  }
 
   const token = config.serverConfig.authToken
 

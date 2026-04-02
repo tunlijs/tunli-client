@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### feat: client/server version compatibility check
+- `CLIENT_VERSION` constant in `defs.ts` — resolved from `__APP_VERSION__` (SEA build) or `package.json` at runtime
+- `isVersionCompatible()` in `versionFunctions.ts` for semver comparison
+- `GET /connect-info` returns `minClientVersion` — checked in `tunli share` and `tunli connect`
+- `POST /proxy/:id/connect` used in `Proxy.ts` — checked on initial connect and every reconnect
+- Client exits with clear message if server requires a newer version
+
 ### Refactor: centralized error messages
 - New `src/lib/errorMessages.ts` with all user-facing error and status messages
 - Eliminates duplicate strings across commands (`NO_LOCAL_CONFIG`, `NOT_REGISTERED`, `NO_DAEMON_RUNNING`, `NO_ACTIVE_TUNNELS`, `UNEXPECTED_DAEMON_RESPONSE`, `FAILED_TO_REACH_RELAY`, `PROFILE_NOT_FOUND`, `ABORTED`, `REGISTRATION_FAILED`, `VERSION_INCOMPATIBLE`, and more)

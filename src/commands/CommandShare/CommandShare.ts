@@ -2,7 +2,8 @@ import {Argument, Command} from '#commander/index'
 import type {Context} from '#types/types'
 import {ensureIdentity, encodePublicKey, fingerprint} from '#identity/identity'
 import {createShareHost} from '#share/ShareHost'
-import {DEFAULT_SERVER_NAME} from '#lib/defs'
+import {CLIENT_VERSION, DEFAULT_SERVER_NAME} from '#lib/defs'
+import {isVersionCompatible} from '#utils/versionFunctions'
 import {ERROR_MESSAGES} from '#lib/errorMessages'
 
 export const createCommandShare = (ctx: Context, _program: Command) => {
@@ -32,7 +33,11 @@ export const createCommandShare = (ctx: Context, _program: Command) => {
       return ctx.exit(1)
     }
 
-    const {socketUrl, capturePath} = connectInfoResult.data
+    const {socketUrl, capturePath, minClientVersion} = connectInfoResult.data
+    if (minClientVersion && !isVersionCompatible(CLIENT_VERSION, minClientVersion)) {
+      ctx.stdErr(ERROR_MESSAGES.VERSION_INCOMPATIBLE(minClientVersion, CLIENT_VERSION))
+      return ctx.exit(1)
+    }
     const identity = ensureIdentity()
     const pubKey = encodePublicKey(identity.publicKeyRaw)
     const fp = fingerprint(identity.publicKeyRaw)

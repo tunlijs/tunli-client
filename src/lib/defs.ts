@@ -1,6 +1,10 @@
 import {relative, resolve} from "path";
 import {homedir} from "os";
 import {existsSync} from "fs";
+import {readPackageJson} from "#package-json/packageJson";
+
+declare const __APP_VERSION__: string | undefined
+export const CLIENT_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : readPackageJson()?.version ?? 'dev'
 
 export const PING_INTERVAL = 5000
 
@@ -59,4 +63,3 @@ export const {IS_DEV_ENV} = (() => {
     IS_DEV_ENV: isDev
   }
 })();
-
