@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### `tunli http` / `tunli https`: add `--allow` / `--deny` CIDR options
+- `--allow <cidr>` and `--deny <cidr>` flags now available on the `http`/`https` commands, consistent with `tunli use`
+
 ### `tunli setup`: interactive setup wizard
 - New `setup` command — 5-step wizard for first-time configuration
 - Step 1 (Relay): auto-registers with tunli.app if no account exists, reuses existing registration otherwise

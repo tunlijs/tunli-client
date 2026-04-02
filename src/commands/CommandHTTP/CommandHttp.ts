@@ -10,11 +10,13 @@ import {AppEventEmitter} from "#cli-app/AppEventEmitter";
 import {createProxy} from "#proxy/Proxy";
 import {initDashboard} from "#cli-app/Dashboard";
 import {initLiveLog} from "#cli-app/LiveLog";
+import {addAllowDenyCidrOptions} from "#commands/shared/allowDenyCidrCommand";
 
 export const createCommandHttp = (ctx: Context, _program: Command, protocol: Protocol = 'http') => {
   const cmd = new Command(protocol)
     .description(`Start a tunnel to a local ${protocol.toUpperCase()} service`)
   addSharedOptions(cmd, 'save')
+  addAllowDenyCidrOptions(cmd)
   cmd.addArgument(new Argument('port', 'Local port to forward (e.g. 3000)').required().parse(checkPort))
   cmd.addArgument(new Argument('host', 'Local host to forward to (default: localhost)'))
   cmd.addOption(new Option('foreground', 'Run tunnel in the foreground (no daemon)').alias('fg'))
@@ -27,7 +29,9 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
       save: string;
       foreground: boolean;
       dashboard: boolean;
-      logs: boolean
+      logs: boolean;
+      allowCidr?: string[];
+      denyCidr?: string[];
     }
 
     const config = resolveConfig(ctx, {
@@ -37,6 +41,8 @@ export const createCommandHttp = (ctx: Context, _program: Command, protocol: Pro
     }, 'save')
 
     config.update({protocol, host, port})
+    if (opts.allowCidr?.length) config.allowCidr = [...(config.allowCidr ?? []), ...opts.allowCidr]
+    if (opts.denyCidr?.length) config.denyCidr = [...(config.denyCidr ?? []), ...opts.denyCidr]
 
     const validated = await validateProfileConfig(ctx, config)
 
