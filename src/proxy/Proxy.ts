@@ -54,6 +54,7 @@ export const createProxy = async (
     path: TUNNEL_SOCKET_PATH,
     auth: {
       token,
+      targetHost: config.target.host,
       ...(config.allowedCidr.length && {allowCidr: config.allowedCidr.map(String)}),
       ...(config.deniedCidr.length && {denyCidr: config.deniedCidr.map(String)}),
     },

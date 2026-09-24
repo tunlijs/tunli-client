@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### fix: send target host on connect
+- `targetHost` (local target hostname) passed in socket.io `auth`, so the server only rewrites `Location` headers for redirects to the local target — redirects to foreign domains stay untouched
+
 ### feat: CIDR allow/deny enforcement via WebSocket handshake
 - `allowCidr`/`denyCidr` passed in socket.io `auth` on every connect/reconnect
 - Server stores rules in `TunnelSocketRegistry` (in-memory, tied to socket lifetime)
