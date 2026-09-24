@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.0] - 2026-09-24
+
+### ci: move GitHub Actions to the Node.js 24 runtime
+- `actions/checkout` v4 → v7, `actions/setup-node` v4 → v7, `softprops/action-gh-release` v2 → v3 (CI and release workflows)
+- Fixes the Node.js 20 deprecation warning in the release build; Node.js 20 was removed from GitHub runners on 2026-09-16
+
 ## [0.7.1] - 2026-09-24
 
 ### fix: send target host on connect
