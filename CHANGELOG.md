@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0] - 2026-09-28
+
+### feat: `tunli receive <directory>` command for file uploads via browser
+- Starts a temporary upload page behind the tunnel; the sender uploads files from a browser directly into a local directory
+- Uploads are chunked (4 MB), verified, and resumable, with pause/cancel per file and collision-safe filenames
+- `--once` stops the receiver after one successful upload, `--max-size` sets the per-file limit (default 10240 MB)
+
+### perf: stream proxied request bodies instead of buffering them
+- The proxy now forwards request chunks to the local target as they arrive rather than buffering the full body first, so uploads no longer consume memory proportional to file size
+
 ## [0.8.3] - 2026-09-28
 
 ### feat: show active profile on connect
