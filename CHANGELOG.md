@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.1] - 2026-09-28
+
+### fix: crash on startup (`logger.debug is not a function`)
+- `bin/tunli` still called `proxyChildProcess(path)` with the pre-logger-refactor signature; it now creates the logger (like the SEA launcher) and passes it in
+
 ## [0.8.0] - 2026-09-24
 
 ### ci: move GitHub Actions to the Node.js 24 runtime
