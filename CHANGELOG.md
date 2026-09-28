@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.2] - 2026-09-28
+
+### fix: helpful hint when running `tunli` without a profile
+- Bare `tunli` starts the default profile. If none exists, it now shows how to get started (`register`, `http`, `setup`, `--help`) instead of the parser error `Invalid default for <profile>: …` with a misleading `tunli start --help` hint
+
 ## [0.8.1] - 2026-09-28
 
 ### fix: crash on startup (`logger.debug is not a function`)

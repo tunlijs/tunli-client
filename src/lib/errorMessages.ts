@@ -20,4 +20,11 @@ export const ERROR_MESSAGES = {
   NO_ACTIVE_TUNNELS: "No active tunnels.",
   ABORTED: "Aborted.",
   PROFILE_NOT_FOUND: (name: string) => `Profile "${name}" not found.`,
+  NO_DEFAULT_PROFILE: (name: string) =>
+    `No profile "${name}" found, so there is nothing to start.\n\n` +
+    `Get started:\n` +
+    `  tunli register      Register with the server (once)\n` +
+    `  tunli http 3000     Expose a local port\n` +
+    `  tunli setup         Interactive setup wizard\n` +
+    `  tunli --help        Show all commands`,
 }
