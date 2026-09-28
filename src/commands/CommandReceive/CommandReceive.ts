@@ -10,7 +10,7 @@ import {startReceiveServer} from '#receive/ReceiveServer'
 export const createCommandReceive = (ctx: Context, _program: Command) => {
   const cmd = new Command('receive')
     .description('Receive files through a temporary browser upload page')
-    .addArgument(new Argument('directory', 'Directory in which to save uploads').required())
+    .addArgument(new Argument('directory', 'Directory in which to save uploads (default: current directory)').default('.'))
     .addOption(new Option('once', 'Stop after one successful upload'))
     .addOption(new Option('max-size', 'Maximum size per file in MB (default: 10240)').argument('MB').parse(value => {
       const mb = Number(value)
@@ -19,6 +19,12 @@ export const createCommandReceive = (ctx: Context, _program: Command) => {
       }
       return mb
     }))
+
+  cmd.extendUsage()
+  cmd.addExample('receive', 'Start a temporary upload page for the current directory')
+  cmd.addExample('receive ~/uploads', 'Start a temporary upload page for ~/uploads')
+  cmd.addExample('receive ~/uploads --once', 'Stop after one successful upload')
+  cmd.addExample('receive ~/uploads --max-size 4096', 'Allow files up to 4096 MB')
 
   cmd.action(async ({args, options}: ParseResult) => {
     const directory = resolve(args.directory as string)

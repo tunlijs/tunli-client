@@ -75,11 +75,12 @@ tunli http 3000 --dashboard       # with live TUI dashboard (alias: --db)
 tunli http 3000 --logs            # with live log output to stdout
 ```
 
-### `tunli receive <directory>`
+### `tunli receive [directory]`
 
-Start a temporary upload page for receiving files into a directory on this machine. Share the printed URL with the sender, who can upload files from a browser. The receiver runs in the foreground until Ctrl+C.
+Start a temporary upload page for receiving files into a directory on this machine. Share the printed URL with the sender, who can upload files from a browser. The receiver runs in the foreground until Ctrl+C. `directory` defaults to the current directory.
 
 ```bash
+tunli receive                           # receive into the current directory
 tunli receive ~/uploads
 tunli receive ~/uploads --once          # stop after one successful upload
 tunli receive ~/uploads --max-size 4096 # allow files up to 4096 MB
