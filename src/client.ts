@@ -11,7 +11,13 @@ import {existsSync} from "node:fs";
 import {readJsonFile} from "#core/FS/utils";
 import {Option, type ParseResult, program} from '#commander/index';
 import type {Context} from "#types/types";
-import {FOUND_LOCAL_CONFIG_FILEPATH, GLOBAL_CONFIG_FILEPATH, LOCAL_CONFIG_FILEPATH} from "#lib/defs";
+import {
+  DEFAULT_PROFILE_NAME,
+  FOUND_LOCAL_CONFIG_FILEPATH,
+  GLOBAL_CONFIG_FILEPATH,
+  LOCAL_CONFIG_FILEPATH
+} from "#lib/defs";
+import {ERROR_MESSAGES} from "#lib/errorMessages";
 import {createCommandConfig} from "#commands/CommandConfig/CommandConfig";
 import {createCommandHttp} from "#commands/CommandHTTP/CommandHttp";
 import {createCommandStartProfile} from "#commands/CommandUseProfile/CommandUseProfile";
@@ -118,6 +124,15 @@ program.action(({options}: ParseResult) => {
 })
 
 const args = process.argv.slice(2)
+
+if (!args.length) {
+  const defaultProfile = globalConf.defaultProfile ?? DEFAULT_PROFILE_NAME
+  if (!localConf?.profile(defaultProfile).exists() && !globalConf.profile(defaultProfile).exists()) {
+    ctx.stdErr(ERROR_MESSAGES.NO_DEFAULT_PROFILE(defaultProfile))
+    ctx.exit(1)
+  }
+}
+
 const isHelpOrVersion = args.some(a => a === '--help' || a === '-h' || a === '-?' || a === '--version' || a === '-v')
 const isDaemonCommand = args[0] === 'daemon'
 if (!isHelpOrVersion && !isDaemonCommand && packageJson?.version) {
