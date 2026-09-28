@@ -3,8 +3,14 @@
 import {proxyChildProcess, setCursorVisibility} from '#utils/cliFunctions'
 import {exit} from 'node:process'
 import {resolve} from "path";
-import {dirnameFromMeta} from "#core/FS/utils";
+import {dirnameFromMeta, readJsonFile} from "#core/FS/utils";
+import {GLOBAL_CONFIG_FILEPATH} from "#lib/defs";
+import {ParsedGlobalConfig} from "#config/ParsedGlobalConfig";
+import {createComputedLogger} from "#logger/ComputedLogger";
 
-const exitCode = await proxyChildProcess(resolve(dirnameFromMeta(import.meta), '../dist/client.js'))
+const globalConf = new ParsedGlobalConfig(readJsonFile(GLOBAL_CONFIG_FILEPATH), GLOBAL_CONFIG_FILEPATH)
+const logger = createComputedLogger(globalConf)
+
+const exitCode = await proxyChildProcess(logger, resolve(dirnameFromMeta(import.meta), '../dist/client.js'))
 setCursorVisibility(true)
 exit(exitCode)
