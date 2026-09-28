@@ -117,73 +117,51 @@ export const createProxy = async (
         return
       }
 
+      // Forward chunks as they arrive. Buffering the whole request makes file
+      // uploads consume memory proportional to the file size.
+      const contentType = (meta.headers['content-type'] ?? '').toLowerCase()
+      const isExcluded = contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')
       const bodyChunks: Buffer[] = []
-
-      const onPipe = (id: string, chunk: Buffer) => {
-        if (id === requestId) bodyChunks.push(Buffer.from(chunk))
-      }
-      const onPipeError = (id: string, _err: string) => {
-        if (id === requestId) cleanup()
-      }
-      const onPipeEnd = (id: string) => {
-        if (id !== requestId) return
-        cleanup()
-        forward()
-      }
-
-      const cleanup = () => {
-        socket.off('request-pipe', onPipe)
-        socket.off('request-pipe-end', onPipeEnd)
-        socket.off('request-pipe-error', onPipeError)
-      }
-
-      socket.on('request-pipe', onPipe)
-      socket.on('request-pipe-end', onPipeEnd)
-      socket.on('request-pipe-error', onPipeError)
-
-      const forward = () => {
-        const forwardStart = Date.now()
-        const requestFn = config.target.protocol === 'https' ? https.request : http.request
-
-        const localReq = requestFn(
-          {
-            host: config.target.host,
-            port: config.target.port,
-            method: meta.method,
-            path: meta.path,
-            headers: {
-              ...meta.headers,
-              host: config.target.host
+      let bodySize = 0
+      let requestFinished = false
+      let pendingCapture: (() => void) | null = null
+      const forwardStart = Date.now()
+      const requestFn = config.target.protocol === 'https' ? https.request : http.request
+      const localReq = requestFn(
+        {
+          host: config.target.host,
+          port: config.target.port,
+          method: meta.method,
+          path: meta.path,
+          headers: {...meta.headers, host: config.target.host},
+          ...(config.target.protocol === 'https' && {
+            rejectUnauthorized: false,
+            servername: config.target.host
+          }),
+        },
+        (localRes) => {
+          socket.emit('response', requestId, {
+            statusCode: localRes.statusCode,
+            statusMessage: localRes.statusMessage,
+            headers: localRes.headers,
+            httpVersion: localRes.httpVersion,
+          })
+          appEventEmitter.emit('response', {
+              host: config.target.host,
+              port: config.target.port,
+              method: meta.method,
+              path: meta.path,
+              headers: meta.headers,
+              requestId: requestId
             },
-            ...(config.target.protocol === 'https' && {
-              rejectUnauthorized: false,
-              servername: config.target.host
-            }),
-          },
-          (localRes) => {
-            socket.emit('response', requestId, {
-              statusCode: localRes.statusCode,
-              statusMessage: localRes.statusMessage,
+            {
+              statusCode: localRes.statusCode ?? 200,
+              statusMessage: localRes.statusMessage ?? 'OK',
               headers: localRes.headers,
               httpVersion: localRes.httpVersion,
             })
-            appEventEmitter.emit('response', {
-                host: config.target.host,
-                port: config.target.port,
-                method: meta.method,
-                path: meta.path,
-                headers: meta.headers,
-                requestId: requestId
-              },
-              {
-                statusCode: localRes.statusCode ?? 200,
-                statusMessage: localRes.statusMessage ?? 'OK',
-                headers: localRes.headers,
-                httpVersion: localRes.httpVersion,
-              })
-            const contentType = (meta.headers['content-type'] ?? '').toLowerCase()
-            const isExcluded = contentType.includes('multipart/form-data') || contentType.includes('application/octet-stream')
-            const bodySize = bodyChunks.reduce((sum, c) => sum + c.length, 0)
+          const responseMeta = {status: localRes.statusCode ?? 200, durationMs: Date.now() - forwardStart}
+          const emitCaptured = () => {
             const body = (!isExcluded && bodySize > 0 && bodySize <= REPLAY_BODY_LIMIT)
               ? Buffer.concat(bodyChunks).toString('utf-8')
               : null
@@ -193,26 +171,68 @@ export const createProxy = async (
               path: meta.path,
               headers: meta.headers,
               body,
-              bodyUnavailable: isExcluded || (bodySize > REPLAY_BODY_LIMIT),
-              response: {status: localRes.statusCode ?? 200, durationMs: Date.now() - forwardStart},
+              bodyUnavailable: isExcluded || bodySize > REPLAY_BODY_LIMIT,
+              response: responseMeta,
             })
-            localRes.on('data', (chunk: Buffer) => socket.emit('response-pipe', requestId, chunk))
-            localRes.on('end', () => socket.emit('response-pipe-end', requestId))
-            localRes.on('error', (e: Error) => socket.emit('response-pipe-error', requestId, e.message))
-          },
-        )
+          }
+          // The local target may respond before the full request body has been
+          // forwarded (e.g. it rejects early without reading the body). Defer
+          // capturing bodyChunks/bodySize until the body is fully known so the
+          // captured-request event isn't a truncated snapshot.
+          if (requestFinished) emitCaptured()
+          else pendingCapture = emitCaptured
+          localRes.on('data', (chunk: Buffer) => socket.emit('response-pipe', requestId, chunk))
+          localRes.on('end', () => socket.emit('response-pipe-end', requestId))
+          localRes.on('error', (e: Error) => socket.emit('response-pipe-error', requestId, e.message))
+        },
+      )
 
-        localReq.on('error', (e: Error) => {
-          appEventEmitter.emit('request-error', e, {
-            isUpgrade: false,
-            requestId
-          })
-          socket.emit('request-error', requestId, e.message)
-        })
-
-        if (bodyChunks.length) localReq.write(Buffer.concat(bodyChunks))
-        localReq.end()
+      const onPipe = (id: string, chunk: Buffer) => {
+        if (id !== requestId) return
+        const data = Buffer.from(chunk)
+        bodySize += data.length
+        if (!isExcluded && bodySize <= REPLAY_BODY_LIMIT) bodyChunks.push(data)
+        localReq.write(data)
       }
+      const onPipes = (id: string, chunks: Array<{chunk: Buffer}>) => {
+        if (id !== requestId) return
+        for (const {chunk} of chunks) onPipe(id, chunk)
+      }
+      const onPipeError = (id: string, err: string) => {
+        if (id !== requestId) return
+        cleanup()
+        // The body failed to fully arrive from the tunnel, so drop any deferred
+        // captured-request emission rather than record it as if the body were complete.
+        pendingCapture = null
+        localReq.destroy(new Error(err))
+      }
+      const onPipeEnd = (id: string) => {
+        if (id !== requestId) return
+        cleanup()
+        requestFinished = true
+        localReq.end()
+        if (pendingCapture) {
+          pendingCapture()
+          pendingCapture = null
+        }
+      }
+
+      const cleanup = () => {
+        socket.off('request-pipe', onPipe)
+        socket.off('request-pipes', onPipes)
+        socket.off('request-pipe-end', onPipeEnd)
+        socket.off('request-pipe-error', onPipeError)
+      }
+
+      socket.on('request-pipe', onPipe)
+      socket.on('request-pipes', onPipes)
+      socket.on('request-pipe-end', onPipeEnd)
+      socket.on('request-pipe-error', onPipeError)
+      localReq.on('error', (e: Error) => {
+        cleanup()
+        appEventEmitter.emit('request-error', e, {isUpgrade: false, requestId})
+        socket.emit('request-error', requestId, e.message)
+      })
     })
   }
 

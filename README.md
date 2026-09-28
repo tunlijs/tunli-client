@@ -75,6 +75,18 @@ tunli http 3000 --dashboard       # with live TUI dashboard (alias: --db)
 tunli http 3000 --logs            # with live log output to stdout
 ```
 
+### `tunli receive <directory>`
+
+Start a temporary upload page for receiving files into a directory on this machine. Share the printed URL with the sender, who can upload files from a browser. The receiver runs in the foreground until Ctrl+C.
+
+```bash
+tunli receive ~/uploads
+tunli receive ~/uploads --once          # stop after one successful upload
+tunli receive ~/uploads --max-size 4096 # allow files up to 4096 MB
+```
+
+The URL contains a random secret path. The browser sends files in 4 MB chunks, verifies each chunk, and can retry or resume an interrupted upload. Pause, resume, and cancel are available per file; after a page reload, select the same file again to resume it while the receiver is still running. Partially uploaded files stay hidden until completion. Files with an existing name get a numbered suffix instead of overwriting the original. The default maximum size is 10240 MB per file. The relay forwards uploads to this machine; it does not store them.
+
 ### `tunli start <profile>`
 
 Start a tunnel using a saved profile.
