@@ -70,7 +70,7 @@ export const createCommandStartProfile = (ctx: Context, _program: Command) => {
     if (result.type === 'started') {
       const targetUrl = `${validated.target.protocol}://${validated.target.host}:${validated.target.port}`
       const status = result.alreadyRunning ? 'Already running' : '✓ Connected'
-      ctx.stdOut(`${status}\n✓ Public URL: ${result.proxyURL}\n✓ Target URL: ${targetUrl}`)
+      ctx.stdOut(`${status}\n✓ Public URL: ${result.proxyURL}\n✓ Target URL: ${targetUrl}\n✓ Profile:    ${result.profileName}`)
     }
   })
   return cmd

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.3] - 2026-09-28
+
+### feat: show active profile on connect
+- `tunli http`/`tunli use <profile>` now print the profile name alongside the public/target URLs on a successful connect
+
 ## [0.8.2] - 2026-09-28
 
 ### fix: helpful hint when running `tunli` without a profile
