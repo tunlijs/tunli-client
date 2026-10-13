@@ -25,6 +25,12 @@ npx esbuild dist/sea-main.js \
   --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
   --alias:react-devtools-core=node:buffer
 
+# fail the build if a compile-time constant was left undefined (crashes the binary at startup)
+if grep -q '__APP_VERSION__' dist/tunli-main-bundle.js; then
+  echo "✗ __APP_VERSION__ is not replaced in the main bundle" >&2
+  exit 1
+fi
+
 echo "→ Building SEA binary..."
 node --build-sea sea-config-main.json
 
