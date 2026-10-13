@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.1] - 2026-10-13
+
+### fix: release binary crashes on startup (`__APP_VERSION__ is not defined`)
+- The launcher bundle was built without `--define:__APP_VERSION__`. Since the version check (0.7.1), the launcher reads the client version on startup, so every `tunli` binary from the GitHub release crashed immediately. npm installs were not affected.
+- `build-launcher.sh` now injects the version like `build-main.sh`
+- `readPackageJson()` no longer crashes if the constant is missing
+- Both SEA build scripts fail if `__APP_VERSION__` is left in a bundle
+
+### feat: `tunli receive` directory is optional
+- Defaults to the current directory
+
 ## [0.9.0] - 2026-09-28
 
 ### feat: `tunli receive <directory>` command for file uploads via browser

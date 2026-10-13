@@ -8,7 +8,9 @@ BINARY="$SCRIPT_DIR/../dist-sea/$BINARY_NAME"
 cd "$SCRIPT_DIR/.."
 mkdir -p dist-sea
 
-echo "→ Bundling launcher with esbuild..."
+APP_VERSION=$(node -p "require('./package.json').version")
+
+echo "→ Bundling launcher with esbuild (version: $APP_VERSION)..."
 npx esbuild dist/launcher-main.js \
   --bundle \
   --platform=node \
@@ -18,8 +20,15 @@ npx esbuild dist/launcher-main.js \
   --external:react-devtools-core \
   --external:fsevents \
   --define:process.env.NODE_ENV='"production"' \
+  --define:__APP_VERSION__="\"$APP_VERSION\"" \
   --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" \
   --alias:react-devtools-core=node:buffer
+
+# fail the build if a compile-time constant was left undefined (crashes the binary at startup)
+if grep -q '__APP_VERSION__' dist/tunli-launcher-bundle.js; then
+  echo "✗ __APP_VERSION__ is not replaced in the launcher bundle" >&2
+  exit 1
+fi
 
 echo "→ Building launcher SEA binary..."
 node --build-sea sea-config-launcher.json
